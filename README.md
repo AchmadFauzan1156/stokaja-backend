@@ -44,7 +44,7 @@ Ikuti langkah-langkah berikut untuk menjalankan aplikasi di komputer Anda:
 ### 1. Clone Repositori
 
 ```bash
-git clone [https://github.com/username-anda/stokaja-backend.git](https://github.com/username-anda/stokaja-backend.git)
+git clone https://github.com/AchmadFauzan1156/stokaja-backend.git
 cd stokaja-backend
 ```
 
