@@ -24,6 +24,10 @@ const transactionSchema = new mongoose.Schema({
         type: Number,
         required: true
     },
+    marginKeuntungan: {
+        type: Number,
+        default: 0 // Menyimpan (Harga Jual - Harga Modal)
+    },
     statusPesanan: {
         type: String,
         enum: ['pending', 'diproses', 'dikirim', 'selesai'],

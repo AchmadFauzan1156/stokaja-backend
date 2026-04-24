@@ -7,6 +7,7 @@ const checkoutKasir = async (req, res, next) => {
         const { isiKeranjang, lokasiPengiriman, persentasePajak = 0 } = req.body;
         
         let totalHargaBarang = 0;
+        let totalModalBarang = 0; // TAMBAHAN: Untuk menghitung modal
         let keranjangValid = [];
 
         for (let item of isiKeranjang) {
@@ -20,6 +21,9 @@ const checkoutKasir = async (req, res, next) => {
             }
 
             totalHargaBarang += (produk.harga * item.jumlahBeli);
+            // TAMBAHAN: Hitung total modal dari supplier
+            totalModalBarang += ((produk.hargaModal || 0) * item.jumlahBeli);
+
             keranjangValid.push({
                 produkId: produk._id,
                 jumlahBeli: item.jumlahBeli,
@@ -29,11 +33,26 @@ const checkoutKasir = async (req, res, next) => {
 
         const nominalPajak = totalHargaBarang * (persentasePajak / 100);
         const totalBayarLengkap = totalHargaBarang + nominalPajak;
+        
+        // TAMBAHAN: Hitung laba bersih transaksi ini
+        const labaBersih = totalHargaBarang - totalModalBarang;
 
         for (let item of keranjangValid) {
             const produk = await Product.findById(item.produkId);
             produk.stok -= item.jumlahBeli;
             await produk.save();
+
+            // --- TAMBAHAN: FITUR REAL-TIME ALERT SOCKET.IO ---
+            if (produk.stok <= (produk.stokMinimum || 5)) {
+                const io = req.app.get('io'); // Memanggil Socket.io dari server.js
+                if (io) {
+                    io.emit('alertAdmin', {
+                        tipe: 'STOK_MENIPIS',
+                        pesan: `⚠️ Peringatan Darurat: Stok ${produk.nama} hampir habis (Sisa: ${produk.stok} pcs)!`
+                    });
+                }
+            }
+            // -------------------------------------------------
         }
 
         const transaksiBaru = new Transaction({
@@ -42,6 +61,7 @@ const checkoutKasir = async (req, res, next) => {
             keranjang: keranjangValid,
             pajak: nominalPajak,
             totalHarga: totalBayarLengkap,
+            marginKeuntungan: labaBersih, // TAMBAHAN: Simpan laba ke database
             lokasiPengiriman: lokasiPengiriman || null
         });
         await transaksiBaru.save();
@@ -51,7 +71,8 @@ const checkoutKasir = async (req, res, next) => {
             rincianBiaya: {
                 totalBarang: totalHargaBarang,
                 pajakDikenakan: nominalPajak,
-                totalBayar: totalBayarLengkap
+                totalBayar: totalBayarLengkap,
+                keuntunganBersih: labaBersih // Info tambahan untuk front-end (opsional disembunyikan nanti)
             },
             struk: transaksiBaru
         });
@@ -61,7 +82,6 @@ const checkoutKasir = async (req, res, next) => {
     }
 };
 
-// Fungsi Baru: Khusus untuk pelanggan melihat transaksinya sendiri
 const lihatPesananSaya = async (req, res, next) => {
     try {
         const riwayatPesanan = await Transaction.find({ pelangganId: req.user.id })
@@ -81,16 +101,22 @@ const laporanKeuntungan = async (req, res, next) => {
     try {
         const semuaTransaksi = await Transaction.find();
         if (semuaTransaksi.length === 0) {
-            return res.status(200).json({ pesan: 'Belum ada transaksi', totalPendapatan: 0 });
+            return res.status(200).json({ pesan: 'Belum ada transaksi', totalPendapatan: 0, totalKeuntunganBersih: 0 });
         }
 
         let totalPendapatan = 0;
-        semuaTransaksi.forEach(t => totalPendapatan += t.totalHarga);
+        let totalKeuntunganBersih = 0; // TAMBAHAN: Untuk laporan Admin
+
+        semuaTransaksi.forEach(t => {
+            totalPendapatan += t.totalHarga;
+            totalKeuntunganBersih += (t.marginKeuntungan || 0);
+        });
 
         res.status(200).json({
             pesan: 'Laporan berhasil dibuat',
             jumlahTransaksi: semuaTransaksi.length,
             totalPendapatan: totalPendapatan,
+            totalKeuntunganBersih: totalKeuntunganBersih,
             rincian: semuaTransaksi
         });
 
@@ -172,6 +198,7 @@ const grafikPendapatan = async (req, res, next) => {
                 $group: {
                     _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } }, 
                     totalPendapatan: { $sum: "$totalHarga" },
+                    totalKeuntungan: { $sum: "$marginKeuntungan" },
                     jumlahTransaksi: { $sum: 1 }
                 }
             },

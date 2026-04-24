@@ -13,7 +13,8 @@ const http = require('http');
 const app = express();
 const server = http.createServer(app);
 
-initSocket(server);
+const io = initSocket(server);
+app.set('io', io); // Menyimpan instance Socket agar bisa dipanggil dari mana saja
 
 // --- MIDDLEWARE KEAMANAN GLOBAL ---
 app.use(helmet());

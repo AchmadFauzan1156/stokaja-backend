@@ -13,6 +13,14 @@ const productSchema = new mongoose.Schema({
         type: Number,
         default: 0,
     },
+    stokMinimum: {
+        type: Number,
+        default: 5,
+    },
+    hargaModal: {
+        type: Number,
+        default: 0,
+    },
     gambar: {
         type: String,
         default: null
