@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middlewares/auth');
+const { authorizeRoles } = require('../middlewares/roleMiddleware');
 
 const {
     checkoutKasir,
@@ -21,10 +22,14 @@ router.post(
     checkoutKasir
 );
 
-router.get('/laporan', auth, laporanKeuntungan);
-router.get('/grafik', auth, grafikPendapatan);
-router.get('/transaksi', auth, lihatDaftarPesanan);
+// HANYA Admin yang boleh lihat laporan keuntungan
+router.get('/laporan', auth, authorizeRoles('admin'), laporanKeuntungan);
+router.get('/grafik', auth, authorizeRoles('admin'), grafikPendapatan);
 
-router.patch('/transaksi/:id/status', auth, ubahStatusPesanan);
+// Kasir & Admin boleh lihat semua daftar pesanan
+router.get('/transaksi', auth, authorizeRoles('admin', 'kasir'), lihatDaftarPesanan);
+
+// HANYA Kasir & Admin yang boleh mengubah status (pelanggan dilarang)
+router.patch('/transaksi/:id/status', auth, authorizeRoles('admin', 'kasir'), ubahStatusPesanan);
 
 module.exports = router;
