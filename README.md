@@ -7,9 +7,9 @@
 Dibangun dengan Node.js, Express.js, dan MongoDB Atlas. Mengelola produk, transaksi stok, autentikasi pengguna, dan komunikasi *real-time* via WebSocket.
 
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
-[![Express](https://img.shields.io/badge/Express-5.x-000000?style=flat-square&logo=express&logoColor=white)](https://expressjs.com)
+[![Express](https://img.shields.io/badge/Express-5.2.1-000000?style=flat-square&logo=express&logoColor=white)](https://expressjs.com)
 [![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-47A248?style=flat-square&logo=mongodb&logoColor=white)](https://www.mongodb.com)
-[![Socket.io](https://img.shields.io/badge/Socket.io-4.x-010101?style=flat-square&logo=socket.io&logoColor=white)](https://socket.io)
+[![Socket.io](https://img.shields.io/badge/Socket.io-4.8.3-010101?style=flat-square&logo=socket.io&logoColor=white)](https://socket.io)
 [![License: ISC](https://img.shields.io/badge/License-ISC-blue?style=flat-square)](LICENSE)
 
 </div>
@@ -66,12 +66,12 @@ Dibangun dengan Node.js, Express.js, dan MongoDB Atlas. Mengelola produk, transa
 | Kategori | Teknologi |
 |---|---|
 | **Runtime** | Node.js 18+ |
-| **Framework** | Express.js 5.x |
+| **Framework** | Express.js 5.2.1 |
 | **Database** | MongoDB Atlas via Mongoose ODM |
-| **Real-time** | Socket.io 4.x |
+| **Real-time** | Socket.io 4.8.3 |
 | **Autentikasi** | JSON Web Token (jsonwebtoken) + bcrypt |
-| **Upload File** | Multer 2.x |
-| **Validasi** | express-validator 7.x |
+| **Upload File** | Multer 2.1.1 |
+| **Validasi** | express-validator 7.3.2 |
 | **Keamanan** | Helmet, CORS, express-rate-limit |
 | **Export** | ExcelJS (xlsx), PDFKit (pdf) |
 | **Dev Tools** | Nodemon, ESLint, Prettier |
