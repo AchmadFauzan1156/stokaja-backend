@@ -1,6 +1,7 @@
 const Transaction = require('../models/Transaction');
 const Product = require('../models/Product');
 const buatNomorResi = require('../utils/generateResi');
+const ExcelJS = require('exceljs');
 
 const checkoutKasir = async (req, res, next) => {
     try {
@@ -215,6 +216,58 @@ const grafikPendapatan = async (req, res, next) => {
     }
 };
 
+const exportLaporanExcel = async (req, res, next) => {
+    try {
+        const semuaTransaksi = await Transaction.find().sort({ createdAt: -1 });
+        
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Laporan Penjualan');
+
+        // Definisi Kolom
+        worksheet.columns = [
+            { header: 'No', key: 'no', width: 5 },
+            { header: 'Tanggal', key: 'tanggal', width: 20 },
+            { header: 'Nomor Resi', key: 'resi', width: 20 },
+            { header: 'Pajak (Rp)', key: 'pajak', width: 15 },
+            { header: 'Total Harga (Rp)', key: 'total', width: 20 },
+            { header: 'Keuntungan Bersih (Rp)', key: 'untung', width: 20 },
+            { header: 'Status', key: 'status', width: 15 },
+        ];
+
+        // Masukkan Data
+        semuaTransaksi.forEach((t, index) => {
+            worksheet.addRow({
+                no: index + 1,
+                tanggal: t.createdAt.toLocaleString('id-ID'),
+                resi: t.nomorResi,
+                pajak: t.pajak || 0,
+                total: t.totalHarga,
+                untung: t.marginKeuntungan || 0,
+                status: t.statusPesanan
+            });
+        });
+
+        // Styling Header agar Bold
+        worksheet.getRow(1).font = { bold: true };
+
+        // Setting Response agar Browser Mendownload File
+        res.setHeader(
+            'Content-Type',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        );
+        res.setHeader(
+            'Content-Disposition',
+            'attachment; filename=' + 'Laporan_StokAja_' + Date.now() + '.xlsx'
+        );
+
+        await workbook.xlsx.write(res);
+        res.status(200).end();
+
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
     checkoutKasir,
     lihatPesananSaya,
@@ -222,5 +275,6 @@ module.exports = {
     ubahStatusPesanan,
     lihatDaftarTransaksi,
     grafikPendapatan,
-    lihatDaftarPesanan
+    lihatDaftarPesanan,
+    exportLaporanExcel
 };
