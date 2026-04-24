@@ -22,6 +22,10 @@ app.set('io', io); // Menyimpan instance Socket agar bisa dipanggil dari mana sa
 
 // --- MIDDLEWARE KEAMANAN GLOBAL ---
 app.use(helmet());
+const corsOptions = {
+    origin: process.env.CORS_ORIGIN || '*', // Jika di .env kosong, sementara buka semua
+    credentials: true // Mengizinkan cookie/header otorisasi
+};
 app.use(cors());
 app.use(express.json());
 
