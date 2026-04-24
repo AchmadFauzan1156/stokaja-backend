@@ -4,6 +4,7 @@ const productSchema = new mongoose.Schema({
     nama: {
         type: String,
         required: true,
+        index: true
     },
     harga: {
         type: Number,

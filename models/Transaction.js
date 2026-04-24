@@ -4,12 +4,14 @@ const transactionSchema = new mongoose.Schema({
     nomorResi: {
         type: String,
         required: true,
-        unique: true
+        unique: true,
+        index: true
     },
     pelangganId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
-        required: false
+        required: false,
+        index: true
     },
     keranjang: [{
         produkId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
@@ -39,5 +41,7 @@ const transactionSchema = new mongoose.Schema({
         alamatDetail: { type: String }
     }
 }, { timestamps: true });
+
+transactionSchema.index({ createdAt: 1 });
 
 module.exports = mongoose.model('Transaction', transactionSchema);

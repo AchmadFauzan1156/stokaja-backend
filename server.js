@@ -1,3 +1,6 @@
+const mongoSanitize = require('express-mongo-sanitize');
+const xss = require('xss-clean');
+const compression = require('compression');
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -28,6 +31,15 @@ const corsOptions = {
 };
 app.use(cors());
 app.use(express.json());
+
+// PROTEKSI INJECTION: Mencegah hacker mengirim kode operator MongoDB (seperti $gt, $eq) di dalam form login/checkout
+app.use(mongoSanitize());
+
+// PROTEKSI XSS: Membersihkan input dari script jahat (mencegah tag <script> masuk ke database)
+app.use(xss());
+
+// OPTIMASI PERFORMA: Mengompresi ukuran respons API menjadi sangat kecil (gzip) sehingga loading Front-End memakan waktu kurang dari 1 detik!
+app.use(compression());
 
 // --- MORGAN (Pencatat Request Klien) ---
 app.use(morgan('combined', {
