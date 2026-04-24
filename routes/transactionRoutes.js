@@ -17,14 +17,6 @@ const {
 const { validasiCheckout } = require('../validations/transactionValidation');
 const { cekHasilValidasi } = require('../validations/productValidation');
 
-router.post(
-    '/checkout',
-    auth,
-    validasiCheckout,
-    cekHasilValidasi,
-    checkoutKasir
-);
-
 // Pelanggan, Kasir, Admin boleh checkout
 router.post('/checkout', auth, validasiCheckout, cekHasilValidasi, checkoutKasir);
 
