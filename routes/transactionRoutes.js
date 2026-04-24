@@ -8,7 +8,8 @@ const {
     laporanKeuntungan,
     ubahStatusPesanan,
     grafikPendapatan,
-    lihatDaftarPesanan
+    lihatDaftarPesanan,
+    exportLaporanExcel
 } = require('../controllers/transactionController');
 
 const { validasiCheckout } = require('../validations/transactionValidation');
@@ -25,6 +26,7 @@ router.post(
 // HANYA Admin yang boleh lihat laporan keuntungan
 router.get('/laporan', auth, authorizeRoles('admin'), laporanKeuntungan);
 router.get('/grafik', auth, authorizeRoles('admin'), grafikPendapatan);
+router.get('/laporan/excel', auth, authorizeRoles('admin'), exportLaporanExcel);
 
 // Kasir & Admin boleh lihat semua daftar pesanan
 router.get('/transaksi', auth, authorizeRoles('admin', 'kasir'), lihatDaftarPesanan);
