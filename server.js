@@ -69,6 +69,12 @@ app.use((req, res, next) => {
 app.use(errorHandler);
 
 // --- JALANKAN SERVER ---
-server.listen(PORT, () => {
-    console.log(`🚀 Server berjalan di port ${PORT}`);
-});
+// HANYA jalankan server.listen jika BUKAN sedang melakukan testing
+if (process.env.NODE_ENV !== 'test') {
+    server.listen(process.env.PORT || 5000, () => {
+        console.log(`🚀 Server berjalan di port ${process.env.PORT || 5000}`);
+    });
+}
+
+// WAJIB DIEKSPOR agar bisa dibaca oleh Supertest
+module.exports = app;

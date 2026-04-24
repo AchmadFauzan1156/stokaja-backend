@@ -28,7 +28,7 @@ const checkoutKasir = async (req, res, next) => {
                 {
                     $inc: { stok: -item.jumlahBeli } // Langsung potong stoknya
                 },
-                { new: true, session } // WAJIB lampirkan session!
+                { returnDocument: 'after', session } // WAJIB lampirkan session!
             );
             
             if (!produk) {
