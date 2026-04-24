@@ -158,22 +158,6 @@ const ubahStatusPesanan = async (req, res, next) => {
     }
 };
 
-const lihatDaftarTransaksi = async (req, res, next) => {
-    try {
-        const { status } = req.query;
-        let aturanSaringan = {};
-        
-        if (status) {
-            aturanSaringan.statusPesanan = status;
-        }
-        
-        const daftarTransaksi = await Transaction.find(aturanSaringan).sort({ createdAt: -1 });
-        res.status(200).json(daftarTransaksi);
-    } catch (error) {
-        next(error);
-    }
-};
-
 const lihatDaftarPesanan = async (req, res, next) => {
     try {
         const { status } = req.query;
@@ -184,7 +168,7 @@ const lihatDaftarPesanan = async (req, res, next) => {
         }
 
         const daftarPesanan = await Transaction.find(aturanPencarian)
-            .populate('keranjang.produkId', 'nama harga') 
+            .populate('keranjang.produkId', 'nama harga')
             .sort({ createdAt: -1 });
         
         res.status(200).json({
@@ -328,7 +312,6 @@ module.exports = {
     lihatPesananSaya,
     laporanKeuntungan,
     ubahStatusPesanan,
-    lihatDaftarTransaksi,
     grafikPendapatan,
     lihatDaftarPesanan,
     exportLaporanExcel,
