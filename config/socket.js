@@ -1,30 +1,42 @@
-const socketIo = require('socket.io');
+const { Server } = require("socket.io");
+const jwt = require("jsonwebtoken");
 
 const initSocket = (server) => {
-    const io = socketIo(server, {
-        cors: { origin: '*' }
+    const io = new Server(server, {
+        cors: {
+            origin: "*",
+            methods: ["GET", "POST"]
+        }
     });
 
-    io.on('connection', (socket) => {
-        console.log(`📡 Walkie-Talkie Terhubung: ID ${socket.id}`);
+    // --- MIDDLEWARE AUTENTIKASI ---
+    // Logika ini akan berjalan setiap kali ada klien yang mencoba 'Connect'
+    io.use((socket, next) => {
+        // Front-End harus mengirim token di dalam objek 'auth'
+        const token = socket.handshake.auth?.token;
 
-        socket.on('gabungRuangan', (namaRuangan) => {
-            socket.join(namaRuangan);
-            console.log(`🔑 User ${socket.id} masuk ke ruangan: ${namaRuangan}`);
-        });
+        if (!token) {
+            return next(new Error("Akses Ditolak: Token tidak ditemukan."));
+        }
 
-        socket.on('kirimPesanPrivate', (dataMentah) => {
-            try {
-                let data = typeof dataMentah === 'string' ? JSON.parse(dataMentah) : dataMentah;
-                console.log(`💬 Pesan di [${data.ruangan}] dari ${data.pengirim}: ${data.teks}`);
-                io.to(data.ruangan).emit('pesanBaru', data);
-            } catch (error) {
-                console.log("❌ Server bingung, format pesan bukan JSON yang benar:", dataMentah);
-            }
-        });
+        try {
+            // Verifikasi token menggunakan JWT_SECRET yang sama dengan API
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            
+            // Simpan data user ke dalam objek socket agar bisa diakses di fungsi lain
+            socket.user = decoded;
+            next(); // Izinkan koneksi
+        } catch (err) {
+            return next(new Error("Akses Ditolak: Token tidak valid atau kadaluarsa."));
+        }
+    });
 
-        socket.on('disconnect', () => {
-            console.log(`🔌 Walkie-Talkie Terputus: ID ${socket.id}`);
+    io.on("connection", (socket) => {
+        // Sekarang kita tahu siapa yang terhubung
+        console.log(`📡 User Terkoneksi ke Socket: ${socket.user.id} (${socket.user.role})`);
+
+        socket.on("disconnect", () => {
+            console.log(`🔌 User Terputus: ${socket.user.id}`);
         });
     });
 

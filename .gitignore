@@ -1,18 +1,27 @@
-# Dependencies (Library)
+# Dependencies
 node_modules/
 
-# Environment Variables
+# Environment
 .env
+.env.local
+.env.production
 
-# Uploaded Files
+# Logs
+logs/
+*.log
+
+# IDE Files
+.vscode/
+.idea/
+*.swp
+
+# Upload files
 uploads/
-!uploads/.gitkeep
 
-# Log Files
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# OS Generated Files
+# OS
 .DS_Store
 Thumbs.db
+
+# Build
+dist/
+build/

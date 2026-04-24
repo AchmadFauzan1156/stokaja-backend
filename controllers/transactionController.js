@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Transaction = require('../models/Transaction');
 const Product = require('../models/Product');
 const buatNomorResi = require('../utils/generateResi');
@@ -5,6 +6,10 @@ const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit');
 
 const checkoutKasir = async (req, res, next) => {
+    // MEMULAI SESI TRANSAKSI DATABASE
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
     try {
         const { isiKeranjang, lokasiPengiriman, persentasePajak = 0 } = req.body;
         
@@ -12,14 +17,23 @@ const checkoutKasir = async (req, res, next) => {
         let totalModalBarang = 0;
         let keranjangValid = [];
 
+        // POTONG STOK SECARA ATOMIK (LANGSUNG SAAT LOOPING)
         for (let item of isiKeranjang) {
-            const produk = await Product.findById(item.produkId);
+            // Gunakan findOneAndUpdate untuk mengunci dan memotong stok di 1 langkah milidetik yang sama
+            const produk = await Product.findOneAndUpdate(
+                {
+                    _id: item.produkId,
+                    stok: { $gte: item.jumlahBeli } // SYARAT: Stok di DB harus >= jumlah yang dibeli
+                },
+                {
+                    $inc: { stok: -item.jumlahBeli } // Langsung potong stoknya
+                },
+                { new: true, session } // WAJIB lampirkan session!
+            );
             
             if (!produk) {
-                return res.status(404).json({ pesan: `Produk dengan ID ${item.produkId} tidak ditemukan!` });
-            }
-            if (produk.stok < item.jumlahBeli) {
-                return res.status(400).json({ pesan: `Maaf, stok ${produk.nama} tidak mencukupi!` });
+                // Jika produk tidak ditemukan ATAU stoknya ternyata kurang dari jumlah beli, batalkan!
+                throw new Error(`Gagal: Stok produk ID ${item.produkId} tidak mencukupi atau produk dihapus.`);
             }
 
             totalHargaBarang += (produk.harga * item.jumlahBeli);
@@ -30,17 +44,8 @@ const checkoutKasir = async (req, res, next) => {
                 jumlahBeli: item.jumlahBeli,
                 hargaSatuan: produk.harga
             });
-        }
 
-        const nominalPajak = totalHargaBarang * (persentasePajak / 100);
-        const totalBayarLengkap = totalHargaBarang + nominalPajak;
-        const labaBersih = totalHargaBarang - totalModalBarang;
-
-        for (let item of keranjangValid) {
-            const produk = await Product.findById(item.produkId);
-            produk.stok -= item.jumlahBeli;
-            await produk.save();
-
+            // Trigger Socket.io jika stok menipis
             if (produk.stok <= (produk.stokMinimum || 5)) {
                 const io = req.app.get('io');
                 if (io) {
@@ -52,16 +57,27 @@ const checkoutKasir = async (req, res, next) => {
             }
         }
 
+        const nominalPajak = totalHargaBarang * (persentasePajak / 100);
+        const totalBayarLengkap = totalHargaBarang + nominalPajak;
+        const labaBersih = totalHargaBarang - totalModalBarang;
+
+        // SIMPAN TRANSAKSI
         const transaksiBaru = new Transaction({
             nomorResi: buatNomorResi(),
-            pelangganId: req.user.role === 'pelanggan' ? req.user.id : null,
+            pelangganId: req.user && req.user.role === 'pelanggan' ? req.user.id : null,
             keranjang: keranjangValid,
             pajak: nominalPajak,
             totalHarga: totalBayarLengkap,
             marginKeuntungan: labaBersih,
             lokasiPengiriman: lokasiPengiriman || null
         });
-        await transaksiBaru.save();
+        
+        // WAJIB lampirkan session saat menyimpan!
+        await transaksiBaru.save({ session });
+
+        // JIKA SEMUA LANCAR, COMMIT (SIMPAN PERMANEN KE DATABASE)
+        await session.commitTransaction();
+        session.endSession();
 
         res.status(201).json({
             pesan: 'Checkout berhasil!',
@@ -75,7 +91,17 @@ const checkoutKasir = async (req, res, next) => {
         });
 
     } catch (error) {
-        next(error);
+        // JIKA ADA 1 SAJA ERROR (Misal stok tiba-tiba habis), ROLLBACK SEMUA PERUBAHAN!
+        // Uang kembali, stok yang tadinya sempat kepotong akan dikembalikan otomatis oleh MongoDB.
+        await session.abortTransaction();
+        session.endSession();
+
+        // Tangkap pesan error buatan kita (stok habis)
+        if (error.message.includes('Gagal: Stok produk')) {
+            return res.status(400).json({ pesan: error.message });
+        }
+        
+        next(error); // Jika error lain, lempar ke Global Error Handler
     }
 };
 

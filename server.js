@@ -2,6 +2,10 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const morgan = require('morgan');
+const logger = require('./utils/logger');
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpec = require('./config/swagger');
 require('dotenv').config();
 
 const connectDB = require('./config/db');
@@ -20,6 +24,11 @@ app.set('io', io); // Menyimpan instance Socket agar bisa dipanggil dari mana sa
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
+
+// --- MORGAN (Pencatat Request Klien) ---
+app.use(morgan('combined', {
+    stream: { write: (message) => logger.info(message.trim()) }
+}));
 
 // --- RATE LIMITER ---
 const apiLimiter = rateLimit({
@@ -42,11 +51,14 @@ const transactionRoutes = require('./routes/transactionRoutes');
 const userRoutes = require('./routes/userRoutes');
 const rawMaterialRoutes = require('./routes/rawMaterialRoutes');
 
-app.use('/api', authRoutes);
-app.use('/api', productRoutes);
-app.use('/api', transactionRoutes);
-app.use('/api', userRoutes);
-app.use('/api', rawMaterialRoutes);
+const API_VERSION = '/api/v1';
+
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.use(API_VERSION, authRoutes);
+app.use(API_VERSION, productRoutes);
+app.use(API_VERSION, transactionRoutes);
+app.use(API_VERSION, userRoutes);
+app.use(API_VERSION, rawMaterialRoutes);
 
 app.use('/uploads', express.static('uploads'));
 
