@@ -4,9 +4,9 @@ const buatNomorResi = require('../utils/generateResi');
 
 const checkoutKasir = async (req, res, next) => {
     try {
-        const { isiKeranjang } = req.body;
+        const { isiKeranjang, lokasiPengiriman, persentasePajak = 0 } = req.body;
         
-        let totalHargaSemua = 0;
+        let totalHargaBarang = 0;
         let keranjangValid = [];
 
         for (let item of isiKeranjang) {
@@ -19,13 +19,16 @@ const checkoutKasir = async (req, res, next) => {
                 return res.status(400).json({ pesan: `Maaf, stok ${produk.nama} tidak mencukupi!` });
             }
 
-            totalHargaSemua += (produk.harga * item.jumlahBeli);
+            totalHargaBarang += (produk.harga * item.jumlahBeli);
             keranjangValid.push({
                 produkId: produk._id,
                 jumlahBeli: item.jumlahBeli,
                 hargaSatuan: produk.harga
             });
         }
+
+        const nominalPajak = totalHargaBarang * (persentasePajak / 100);
+        const totalBayarLengkap = totalHargaBarang + nominalPajak;
 
         for (let item of keranjangValid) {
             const produk = await Product.findById(item.produkId);
@@ -35,16 +38,40 @@ const checkoutKasir = async (req, res, next) => {
 
         const transaksiBaru = new Transaction({
             nomorResi: buatNomorResi(),
+            pelangganId: req.user.role === 'pelanggan' ? req.user.id : null,
             keranjang: keranjangValid,
-            totalHarga: totalHargaSemua
+            pajak: nominalPajak,
+            totalHarga: totalBayarLengkap,
+            lokasiPengiriman: lokasiPengiriman || null
         });
         await transaksiBaru.save();
 
         res.status(201).json({
-            pesan: 'Checkout berhasil! Semua stok telah dipotong.',
+            pesan: 'Checkout berhasil!',
+            rincianBiaya: {
+                totalBarang: totalHargaBarang,
+                pajakDikenakan: nominalPajak,
+                totalBayar: totalBayarLengkap
+            },
             struk: transaksiBaru
         });
 
+    } catch (error) {
+        next(error);
+    }
+};
+
+// Fungsi Baru: Khusus untuk pelanggan melihat transaksinya sendiri
+const lihatPesananSaya = async (req, res, next) => {
+    try {
+        const riwayatPesanan = await Transaction.find({ pelangganId: req.user.id })
+            .populate('keranjang.produkId', 'nama gambar')
+            .sort({ createdAt: -1 });
+
+        res.status(200).json({
+            pesan: 'Berhasil memuat riwayat pesanan Anda',
+            data: riwayatPesanan
+        });
     } catch (error) {
         next(error);
     }
@@ -164,6 +191,7 @@ const grafikPendapatan = async (req, res, next) => {
 
 module.exports = {
     checkoutKasir,
+    lihatPesananSaya,
     laporanKeuntungan,
     ubahStatusPesanan,
     lihatDaftarTransaksi,

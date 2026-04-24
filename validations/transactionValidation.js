@@ -6,7 +6,10 @@ const validasiCheckout = [
     body('isiKeranjang.*.produkId')
         .isMongoId().withMessage('ID Produk tidak valid'),
     body('isiKeranjang.*.jumlahBeli')
-        .isInt({ min: 1 }).withMessage('Jumlah minimal beli adalah 1')
+        .isInt({ min: 1 }).withMessage('Jumlah minimal beli adalah 1'),
+    body('persentasePajak')
+        .optional()
+        .isNumeric().withMessage('Persentase pajak harus berupa angka')
 ];
 
 module.exports = { validasiCheckout };
