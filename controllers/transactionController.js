@@ -264,6 +264,15 @@ const generateStrukPDF = async (req, res, next) => {
         
         if (!transaksi) return res.status(404).json({ message: 'Transaksi tidak ditemukan' });
 
+        // --- SECURITY PATCH: Cegah Pelanggan mengintip struk orang lain ---
+        if (req.user.role === 'pelanggan') {
+            if (!transaksi.pelangganId || transaksi.pelangganId.toString() !== req.user.id) {
+                return res.status(403).json({
+                    message: 'Akses ditolak! Anda tidak berhak melihat struk pesanan ini.'
+                });
+            }
+        }
+
         const doc = new PDFDocument({ margin: 50 });
 
         res.setHeader('Content-Type', 'application/pdf');
