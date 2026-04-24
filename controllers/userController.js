@@ -1,6 +1,6 @@
 const User = require('../models/User');
 
-const lihatProfil = async (req, res) => {
+const lihatProfil = async (req, res, next) => {
     try {
         const userId = req.user.id;
 
@@ -10,27 +10,31 @@ const lihatProfil = async (req, res) => {
 
         res.status(200).json(profil);
     } catch (error) {
-        res.status(500).json({ pesan: 'Gagal mengambil profil', error: error.message });
+        next(error); // Lempar error ke pelindung Global Error Handler kita
     }
 };
 
-const updateProfil = async (req, res) => {
+const updateProfil = async (req, res, next) => {
     try {
         const userId = req.user.id;
-        const dataBaru = req.body;
+        
+        // --- SECURITY PATCH: FILTER INPUT ---
+        const { namaLengkap, noHP, alamatLengkap } = req.body;
 
         const profilDiperbarui = await User.findByIdAndUpdate(
             userId,
-            dataBaru,
+            { namaLengkap, noHP, alamatLengkap },
             { returnDocument: 'after', runValidators: true }
         ).select('-password');
+
+        if (!profilDiperbarui) return res.status(404).json({ pesan: 'Profil tidak ditemukan' });
 
         res.status(200).json({
             pesan: 'Profil berhasil diperbarui!',
             data: profilDiperbarui
         });
     } catch (error) {
-        res.status(500).json({ pesan: 'Gagal memperbarui profil', error: error.message });
+        next(error);
     }
 };
 

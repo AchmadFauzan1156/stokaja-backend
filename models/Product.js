@@ -17,6 +17,10 @@ const productSchema = new mongoose.Schema({
         type: Number,
         default: 5,
     },
+    satuan: {
+        type: String,
+        required: true // Contoh: 'kg', 'liter', 'gram', 'pcs'
+    },
     hargaModal: {
         type: Number,
         default: 0,

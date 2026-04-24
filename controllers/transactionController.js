@@ -2,13 +2,14 @@ const Transaction = require('../models/Transaction');
 const Product = require('../models/Product');
 const buatNomorResi = require('../utils/generateResi');
 const ExcelJS = require('exceljs');
+const PDFDocument = require('pdfkit');
 
 const checkoutKasir = async (req, res, next) => {
     try {
         const { isiKeranjang, lokasiPengiriman, persentasePajak = 0 } = req.body;
         
         let totalHargaBarang = 0;
-        let totalModalBarang = 0; // TAMBAHAN: Untuk menghitung modal
+        let totalModalBarang = 0;
         let keranjangValid = [];
 
         for (let item of isiKeranjang) {
@@ -22,7 +23,6 @@ const checkoutKasir = async (req, res, next) => {
             }
 
             totalHargaBarang += (produk.harga * item.jumlahBeli);
-            // TAMBAHAN: Hitung total modal dari supplier
             totalModalBarang += ((produk.hargaModal || 0) * item.jumlahBeli);
 
             keranjangValid.push({
@@ -34,8 +34,6 @@ const checkoutKasir = async (req, res, next) => {
 
         const nominalPajak = totalHargaBarang * (persentasePajak / 100);
         const totalBayarLengkap = totalHargaBarang + nominalPajak;
-        
-        // TAMBAHAN: Hitung laba bersih transaksi ini
         const labaBersih = totalHargaBarang - totalModalBarang;
 
         for (let item of keranjangValid) {
@@ -43,13 +41,12 @@ const checkoutKasir = async (req, res, next) => {
             produk.stok -= item.jumlahBeli;
             await produk.save();
 
-            // --- TAMBAHAN: FITUR REAL-TIME ALERT SOCKET.IO ---
             if (produk.stok <= (produk.stokMinimum || 5)) {
-                const io = req.app.get('io'); // Memanggil Socket.io dari server.js
+                const io = req.app.get('io');
                 if (io) {
                     io.emit('alertAdmin', {
                         tipe: 'STOK_MENIPIS',
-                        pesan: `⚠️ Peringatan Darurat: Stok ${produk.nama} hampir habis (Sisa: ${produk.stok} pcs)!`
+                        pesan: `⚠️ Peringatan: Stok ${produk.nama} sisa ${produk.stok} pcs!`
                     });
                 }
             }
@@ -61,7 +58,7 @@ const checkoutKasir = async (req, res, next) => {
             keranjang: keranjangValid,
             pajak: nominalPajak,
             totalHarga: totalBayarLengkap,
-            marginKeuntungan: labaBersih, // TAMBAHAN: Simpan laba ke database
+            marginKeuntungan: labaBersih,
             lokasiPengiriman: lokasiPengiriman || null
         });
         await transaksiBaru.save();
@@ -72,7 +69,7 @@ const checkoutKasir = async (req, res, next) => {
                 totalBarang: totalHargaBarang,
                 pajakDikenakan: nominalPajak,
                 totalBayar: totalBayarLengkap,
-                keuntunganBersih: labaBersih // Info tambahan untuk front-end (opsional disembunyikan nanti)
+                keuntunganBersih: labaBersih
             },
             struk: transaksiBaru
         });
@@ -99,13 +96,24 @@ const lihatPesananSaya = async (req, res, next) => {
 
 const laporanKeuntungan = async (req, res, next) => {
     try {
-        const semuaTransaksi = await Transaction.find();
+        const { startDate, endDate } = req.query;
+        let query = {};
+
+        // FITUR FILTER TANGGAL
+        if (startDate && endDate) {
+            query.createdAt = {
+                $gte: new Date(startDate),
+                $lte: new Date(new Date(endDate).setHours(23, 59, 59, 999))
+            };
+        }
+
+        const semuaTransaksi = await Transaction.find(query);
         if (semuaTransaksi.length === 0) {
             return res.status(200).json({ pesan: 'Belum ada transaksi', totalPendapatan: 0, totalKeuntunganBersih: 0 });
         }
 
         let totalPendapatan = 0;
-        let totalKeuntunganBersih = 0; // TAMBAHAN: Untuk laporan Admin
+        let totalKeuntunganBersih = 0;
 
         semuaTransaksi.forEach(t => {
             totalPendapatan += t.totalHarga;
@@ -114,6 +122,7 @@ const laporanKeuntungan = async (req, res, next) => {
 
         res.status(200).json({
             pesan: 'Laporan berhasil dibuat',
+            periode: startDate && endDate ? `${startDate} s/d ${endDate}` : 'Semua Waktu',
             jumlahTransaksi: semuaTransaksi.length,
             totalPendapatan: totalPendapatan,
             totalKeuntunganBersih: totalKeuntunganBersih,
@@ -191,9 +200,7 @@ const lihatDaftarPesanan = async (req, res, next) => {
 const grafikPendapatan = async (req, res, next) => {
     try {
         const dataGrafik = await Transaction.aggregate([
-            {
-                $match: { statusPesanan: 'selesai' }
-            },
+            { $match: { statusPesanan: 'selesai' } },
             {
                 $group: {
                     _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } }, 
@@ -202,9 +209,7 @@ const grafikPendapatan = async (req, res, next) => {
                     jumlahTransaksi: { $sum: 1 }
                 }
             },
-            {
-                $sort: { _id: 1 }
-            }
+            { $sort: { _id: 1 } }
         ]);
 
         res.status(200).json({
@@ -218,23 +223,31 @@ const grafikPendapatan = async (req, res, next) => {
 
 const exportLaporanExcel = async (req, res, next) => {
     try {
-        const semuaTransaksi = await Transaction.find().sort({ createdAt: -1 });
+        const { startDate, endDate } = req.query;
+        let query = {};
+
+        if (startDate && endDate) {
+            query.createdAt = {
+                $gte: new Date(startDate),
+                $lte: new Date(new Date(endDate).setHours(23, 59, 59, 999))
+            };
+        }
+
+        const semuaTransaksi = await Transaction.find(query).sort({ createdAt: -1 });
         
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Laporan Penjualan');
 
-        // Definisi Kolom
         worksheet.columns = [
             { header: 'No', key: 'no', width: 5 },
             { header: 'Tanggal', key: 'tanggal', width: 20 },
             { header: 'Nomor Resi', key: 'resi', width: 20 },
             { header: 'Pajak (Rp)', key: 'pajak', width: 15 },
             { header: 'Total Harga (Rp)', key: 'total', width: 20 },
-            { header: 'Keuntungan Bersih (Rp)', key: 'untung', width: 20 },
+            { header: 'Untung Bersih (Rp)', key: 'untung', width: 20 },
             { header: 'Status', key: 'status', width: 15 },
         ];
 
-        // Masukkan Data
         semuaTransaksi.forEach((t, index) => {
             worksheet.addRow({
                 no: index + 1,
@@ -247,22 +260,64 @@ const exportLaporanExcel = async (req, res, next) => {
             });
         });
 
-        // Styling Header agar Bold
         worksheet.getRow(1).font = { bold: true };
 
-        // Setting Response agar Browser Mendownload File
-        res.setHeader(
-            'Content-Type',
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        );
-        res.setHeader(
-            'Content-Disposition',
-            'attachment; filename=' + 'Laporan_StokAja_' + Date.now() + '.xlsx'
-        );
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename=Laporan_StokAja_${Date.now()}.xlsx`);
 
         await workbook.xlsx.write(res);
         res.status(200).end();
 
+    } catch (error) {
+        next(error);
+    }
+};
+
+// FITUR GENERATE STRUK PDF
+const generateStrukPDF = async (req, res, next) => {
+    try {
+        const transaksi = await Transaction.findById(req.params.id).populate('keranjang.produkId', 'nama');
+        
+        if (!transaksi) return res.status(404).json({ message: 'Transaksi tidak ditemukan' });
+
+        const doc = new PDFDocument({ margin: 50 });
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename=Struk_${transaksi.nomorResi}.pdf`);
+
+        doc.pipe(res);
+
+        // Header
+        doc.fontSize(20).text('STOKAJA!', { align: 'center' });
+        doc.fontSize(10).text('Solusi Stok Cerdas untuk UMKM', { align: 'center' });
+        doc.moveDown();
+        doc.text(`------------------------------------------------------------`);
+        doc.text(`No. Resi  : ${transaksi.nomorResi}`);
+        doc.text(`Tanggal   : ${transaksi.createdAt.toLocaleString('id-ID')}`);
+        doc.text(`Status    : ${transaksi.statusPesanan.toUpperCase()}`);
+        doc.text(`------------------------------------------------------------`);
+        doc.moveDown();
+
+        // Items
+        doc.fontSize(12).text('Rincian Belanja:', { underline: true });
+        doc.moveDown(0.5);
+        
+        transaksi.keranjang.forEach(item => {
+            const subtotal = item.jumlahBeli * item.hargaSatuan;
+            doc.fontSize(10).text(`${item.produkId.nama} x ${item.jumlahBeli} @ Rp ${item.hargaSatuan.toLocaleString()} = Rp ${subtotal.toLocaleString()}`);
+        });
+
+        doc.moveDown();
+        doc.text(`------------------------------------------------------------`);
+        doc.fontSize(10).text(`Total Barang : Rp ${(transaksi.totalHarga - transaksi.pajak).toLocaleString()}`, { align: 'right' });
+        doc.text(`Pajak        : Rp ${transaksi.pajak.toLocaleString()}`, { align: 'right' });
+        doc.fontSize(12).text(`TOTAL BAYAR  : Rp ${transaksi.totalHarga.toLocaleString()}`, { align: 'right', bold: true });
+        doc.text(`------------------------------------------------------------`);
+        
+        doc.moveDown(2);
+        doc.fontSize(10).text('Terima kasih telah berbelanja di StokAja!', { align: 'center', italic: true });
+
+        doc.end();
     } catch (error) {
         next(error);
     }
@@ -276,5 +331,6 @@ module.exports = {
     lihatDaftarTransaksi,
     grafikPendapatan,
     lihatDaftarPesanan,
-    exportLaporanExcel
+    exportLaporanExcel,
+    generateStrukPDF
 };

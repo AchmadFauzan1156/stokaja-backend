@@ -40,11 +40,13 @@ const authRoutes = require('./routes/authRoutes');
 const productRoutes = require('./routes/productRoutes');
 const transactionRoutes = require('./routes/transactionRoutes');
 const userRoutes = require('./routes/userRoutes');
+const rawMaterialRoutes = require('./routes/rawMaterialRoutes');
 
 app.use('/api', authRoutes);
 app.use('/api', productRoutes);
 app.use('/api', transactionRoutes);
 app.use('/api', userRoutes);
+app.use('/api', rawMaterialRoutes);
 
 app.use('/uploads', express.static('uploads'));
 
