@@ -52,7 +52,6 @@ const checkoutKasir = async (req, res, next) => {
                     });
                 }
             }
-            // -------------------------------------------------
         }
 
         const transaksiBaru = new Transaction({
