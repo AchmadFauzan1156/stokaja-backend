@@ -13,7 +13,7 @@ require('dotenv').config();
 
 const connectDB = require('./config/db');
 const initSocket = require('./config/socket');
-const { errorHandler } = require('./middlewares/errorHandler');
+const errorHandler = require('./middlewares/errorHandler');
 
 const http = require('http');
 
