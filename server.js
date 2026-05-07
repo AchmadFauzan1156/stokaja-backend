@@ -24,12 +24,15 @@ const io = initSocket(server);
 app.set('io', io); // Menyimpan instance Socket agar bisa dipanggil dari mana saja
 
 // --- MIDDLEWARE KEAMANAN GLOBAL ---
-app.use(helmet());
+app.use(helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false
+}));
 const corsOptions = {
     origin: process.env.CORS_ORIGIN || '*', // Jika di .env kosong, sementara buka semua
     credentials: true // Mengizinkan cookie/header otorisasi
 };
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // PROTEKSI INJECTION: Mencegah hacker mengirim kode operator MongoDB (seperti $gt, $eq) di dalam form login/checkout

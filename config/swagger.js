@@ -16,7 +16,10 @@ const options = {
     security: [{ bearerAuth: [] }]
   },
   // Swagger akan otomatis membaca komentar dari file-file ini
-  apis: ['./routes/*.js', './controllers/*.js'],
+  apis: [
+    path.join(__dirname, '../routes/*.js'),
+    path.join(__dirname, '../controllers/*.js')
+  ],
 };
 
 module.exports = swaggerJsdoc(options);
