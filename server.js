@@ -5,8 +5,6 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const morgan = require('morgan');
 const logger = require('./utils/logger');
-const swaggerUi = require('swagger-ui-express');
-const swaggerSpec = require('./config/swagger');
 require('dotenv').config();
 
 const connectDB = require('./config/db');
@@ -64,7 +62,6 @@ const rawMaterialRoutes = require('./routes/rawMaterialRoutes');
 
 const API_VERSION = '/api/v1';
 
-app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use(API_VERSION, authRoutes);
 app.use(API_VERSION, productRoutes);
 app.use(API_VERSION, transactionRoutes);
