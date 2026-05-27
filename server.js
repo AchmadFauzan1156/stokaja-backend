@@ -62,6 +62,7 @@ const rawMaterialRoutes = require('./routes/rawMaterialRoutes');
 const categoryRoutes = require('./routes/categoryRoutes');
 const paymentMethodRoutes = require('./routes/paymentMethodRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const chatRoutes = require('./routes/chatRoutes');
 
 const API_VERSION = '/api/v1';
 
@@ -73,6 +74,7 @@ app.use(API_VERSION, rawMaterialRoutes);
 app.use(API_VERSION, categoryRoutes);
 app.use(API_VERSION, paymentMethodRoutes);
 app.use(API_VERSION, adminRoutes);
+app.use(API_VERSION, chatRoutes);
 
 app.use('/uploads', express.static('uploads'));
 

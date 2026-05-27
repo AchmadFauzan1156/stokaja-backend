@@ -46,7 +46,8 @@ const checkoutKasir = async (req, res, next) => {
                     produkId: bahan._id,
                     tipeItem: 'RawMaterial',
                     jumlahBeli: item.jumlahBeli,
-                    hargaSatuan: bahan.hargaJual
+                    hargaSatuan: bahan.hargaJual,
+                    catatan: item.catatan || ''
                 });
 
                 // Trigger Socket.io jika stok menipis
@@ -83,7 +84,8 @@ const checkoutKasir = async (req, res, next) => {
                     produkId: produk._id,
                     tipeItem: 'Product',
                     jumlahBeli: item.jumlahBeli,
-                    hargaSatuan: produk.harga
+                    hargaSatuan: produk.harga,
+                    catatan: item.catatan || ''
                 });
 
                 // Trigger Socket.io jika stok menipis

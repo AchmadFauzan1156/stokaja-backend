@@ -4,7 +4,7 @@ const auth = require('../middlewares/auth');
 const { validationResult } = require('express-validator');
 
 // Import Controller & Validasi
-const { registerUser, loginUser, refreshToken, logoutUser } = require('../controllers/authController');
+const { registerUser, loginUser, refreshToken, logoutUser, forgotPassword, resetPassword } = require('../controllers/authController');
 const { validasiRegister, validasiLogin } = require('../validations/authValidation');
 
 // Buat fungsi pengecek validasi khusus untuk Auth di sini agar tidak pinjam dari Product
@@ -21,5 +21,7 @@ router.post('/register', validasiRegister, cekValidasiAuth, registerUser);
 router.post('/login', validasiLogin, cekValidasiAuth, loginUser);
 router.post('/refresh-token', refreshToken);
 router.post('/logout', auth, logoutUser);
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-password/:token', resetPassword);
 
 module.exports = router;

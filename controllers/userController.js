@@ -1,4 +1,6 @@
 const User = require('../models/User');
+const fs = require('fs');
+const path = require('path');
 
 const lihatProfil = async (req, res, next) => {
     try {
@@ -17,13 +19,28 @@ const lihatProfil = async (req, res, next) => {
 const updateProfil = async (req, res, next) => {
     try {
         const userId = req.user.id;
+        const userLama = await User.findById(userId);
         
         // --- SECURITY PATCH: FILTER INPUT ---
-        const { namaLengkap, noHP, alamatLengkap } = req.body;
+        let updateData = {
+            namaLengkap: req.body.namaLengkap,
+            noHP: req.body.noHP,
+            alamatLengkap: req.body.alamatLengkap
+        };
+
+        if (req.file) {
+            if (userLama.avatar) {
+                const oldPath = path.join(__dirname, '..', 'uploads', userLama.avatar);
+                if (fs.existsSync(oldPath)) {
+                    fs.unlinkSync(oldPath);
+                }
+            }
+            updateData.avatar = req.file.filename;
+        }
 
         const profilDiperbarui = await User.findByIdAndUpdate(
             userId,
-            { namaLengkap, noHP, alamatLengkap },
+            updateData,
             { returnDocument: 'after', runValidators: true }
         ).select('-password');
 

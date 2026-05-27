@@ -10,6 +10,9 @@ const validasiCheckout = [
     body('isiKeranjang.*.tipe')
         .optional()
         .isIn(['produk', 'bahanBaku']).withMessage('Tipe harus produk atau bahanBaku'),
+    body('isiKeranjang.*.catatan')
+        .optional()
+        .isString().withMessage('Catatan harus berupa teks'),
     body('persentasePajak')
         .optional()
         .isNumeric().withMessage('Persentase pajak harus berupa angka'),

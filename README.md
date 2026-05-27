@@ -194,6 +194,13 @@ JWT_REFRESH_EXPIRES_IN=7d
 # Isi dengan URL frontend yang diizinkan
 # ==============================================
 CORS_ORIGIN=http://localhost:3000
+
+# ==============================================
+# EMAIL KONFIGURASI (NODEMAILER)
+# ==============================================
+EMAIL_SERVICE=gmail
+EMAIL_USER=...........@gmail.com
+EMAIL_PASS=..._..._..._...
 ```
 
 | Variable | Deskripsi | Contoh Nilai |
@@ -206,6 +213,9 @@ CORS_ORIGIN=http://localhost:3000
 | `JWT_REFRESH_SECRET` | Secret key untuk refresh token (berbeda dari JWT_SECRET) | `openssl rand -hex 32` |
 | `JWT_REFRESH_EXPIRES_IN` | Masa berlaku refresh token | `7d`, `30d` |
 | `CORS_ORIGIN` | URL frontend yang diizinkan mengakses API | `http://localhost:3000` |
+| `EMAIL_SERVICE` | Layanan email yang digunakan untuk Nodemailer | `gmail` |
+| `EMAIL_USER` | Alamat email pengirim (toko) | `............@gmail.com` |
+| `EMAIL_PASS` | Sandi aplikasi (App Password) dari Google/layanan email | `..._..._...` |
 
 > **Penting:** Jangan pernah meng-commit file `.env` ke repository. File ini sudah dimasukkan ke `.gitignore`.
 
@@ -612,6 +622,49 @@ socket.on('pesanBaru', ({ pengirim, teks, waktu }) => {
   console.log(`[${waktu}] ${pengirim}: ${teks}`);
 });
 ```
+
+---
+
+## Tambahan API Baru (Fase 1 & Fase 2)
+
+### 📑 Kategori Produk
+| Method | Endpoint | Keterangan | Akses |
+|---|---|---|---|
+| `GET` | `/api/v1/kategori` | Lihat semua kategori | Authenticated |
+| `POST` | `/api/v1/kategori` | Tambah kategori baru | Admin |
+| `PUT` | `/api/v1/kategori/:id` | Update kategori | Admin |
+| `DELETE` | `/api/v1/kategori/:id` | Hapus kategori | Admin |
+
+### 💳 Metode Pembayaran
+| Method | Endpoint | Keterangan | Akses |
+|---|---|---|---|
+| `GET` | `/api/v1/metode-bayar` | Lihat semua metode pembayaran | Authenticated |
+| `POST` | `/api/v1/metode-bayar` | Tambah metode bayar | Admin |
+| `PUT` | `/api/v1/metode-bayar/:id` | Update metode bayar | Admin |
+| `DELETE`| `/api/v1/metode-bayar/:id` | Hapus metode bayar | Admin |
+
+### 👥 Kelola Akun (User Management)
+| Method | Endpoint | Keterangan | Akses |
+|---|---|---|---|
+| `GET` | `/api/v1/users` | Lihat semua pengguna (bisa di-search) | Admin |
+| `PATCH`| `/api/v1/users/:id/role`| Ubah role pengguna (misal: jadi kasir) | Admin |
+| `DELETE`| `/api/v1/users/:id` | Hapus pengguna | Admin |
+
+### 📊 Laporan Tambahan
+| Method | Endpoint | Keterangan | Akses |
+|---|---|---|---|
+| `GET` | `/api/v1/laporan/per-produk` | Agregasi margin dan penjualan tiap barang | Admin |
+
+### 🔐 Reset Password
+| Method | Endpoint | Keterangan | Akses |
+|---|---|---|---|
+| `POST` | `/api/v1/forgot-password`| Mengirim link reset password (dummy) | Public |
+| `POST` | `/api/v1/reset-password/:token`| Mengubah password berdasarkan token | Public |
+
+### 💬 Live Chat
+| Method | Endpoint | Keterangan | Akses |
+|---|---|---|---|
+| `GET` | `/api/v1/chat/history` | Memuat riwayat chat | Authenticated |
 
 ---
 

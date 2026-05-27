@@ -33,8 +33,33 @@ const initSocket = (server) => {
     });
 
     io.on("connection", (socket) => {
-        // Sekarang kita tahu siapa yang terhubung
         console.log(`📡 User Terkoneksi ke Socket: ${socket.user.id} (${socket.user.role})`);
+
+        // Ketika user mengirim pesan
+        socket.on("send_message", async (data) => {
+            try {
+                // data format: { penerima: "id_admin" (bisa null), pesan: "Isi teks" }
+                const Message = require('../models/Message');
+                const pesanBaru = new Message({
+                    pengirim: socket.user.id,
+                    penerima: data.penerima || null,
+                    isiPesan: data.pesan
+                });
+                await pesanBaru.save();
+
+                // Broadcast kembali pesan ke sender dan penerima agar realtime
+                // Di sistem riil sebaiknya gabung room, tapi sementara broadcast global (dengan flag)
+                io.emit("receive_message", {
+                    _id: pesanBaru._id,
+                    pengirim: socket.user.id,
+                    penerima: data.penerima,
+                    isiPesan: data.pesan,
+                    createdAt: pesanBaru.createdAt
+                });
+            } catch (error) {
+                console.error("Socket error saat kirim pesan:", error);
+            }
+        });
 
         socket.on("disconnect", () => {
             console.log(`🔌 User Terputus: ${socket.user.id}`);

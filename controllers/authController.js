@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
+const crypto = require('crypto');
 const User = require('../models/User');
 
 // --- FUNGSI BANTUAN GENERATE TOKEN ---
@@ -116,4 +117,78 @@ const logoutUser = async (req, res, next) => {
     }
 };
 
-module.exports = { registerUser, loginUser, refreshToken, logoutUser };
+// --- FORGOT PASSWORD ---
+const forgotPassword = async (req, res, next) => {
+    try {
+        const { email } = req.body;
+        const user = await User.findOne({ email });
+
+        if (!user) {
+            return res.status(404).json({ success: false, pesan: 'Email tidak ditemukan' });
+        }
+
+        // Generate token rahasia menggunakan crypto
+        const resetToken = crypto.randomBytes(20).toString('hex');
+        
+        // Hash token dan simpan ke database (berlaku 1 jam)
+        user.resetPasswordToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+        user.resetPasswordExpire = Date.now() + 60 * 60 * 1000;
+        await user.save();
+
+        // URL Reset
+        const resetUrl = `http://localhost:3000/ResetPassword?token=${resetToken}`;
+        const message = `Anda menerima email ini karena Anda (atau seseorang) meminta reset password untuk akun Anda di StokAja!.\n\nSilakan klik link berikut untuk membuat password baru:\n\n${resetUrl}\n\nLink ini akan kadaluarsa dalam 1 jam.\nJika Anda tidak memintanya, abaikan email ini.`;
+
+        try {
+            const sendEmail = require('../utils/sendEmail');
+            await sendEmail({
+                email: user.email,
+                subject: 'StokAja! - Reset Password Token',
+                message: message
+            });
+
+            res.status(200).json({
+                success: true,
+                pesan: 'Email reset password telah dikirim ke ' + user.email
+            });
+        } catch (error) {
+            console.error(error);
+            user.resetPasswordToken = undefined;
+            user.resetPasswordExpire = undefined;
+            await user.save({ validateBeforeSave: false });
+
+            return res.status(500).json({ success: false, pesan: 'Email gagal dikirim. Periksa konfigurasi SMTP.' });
+        }
+    } catch (error) {
+        next(error);
+    }
+};
+
+// --- RESET PASSWORD ---
+const resetPassword = async (req, res, next) => {
+    try {
+        // Ambil token dari param dan cocokan dengan yang di database
+        const resetPasswordToken = crypto.createHash('sha256').update(req.params.token).digest('hex');
+
+        const user = await User.findOne({
+            resetPasswordToken,
+            resetPasswordExpire: { $gt: Date.now() } // Pastikan token belum expired
+        });
+
+        if (!user) {
+            return res.status(400).json({ success: false, pesan: 'Token reset password tidak valid atau sudah kadaluarsa' });
+        }
+
+        // Set password baru
+        user.password = await bcrypt.hash(req.body.password, 12);
+        user.resetPasswordToken = undefined;
+        user.resetPasswordExpire = undefined;
+        await user.save();
+
+        res.json({ success: true, pesan: 'Password berhasil diubah. Silakan login kembali.' });
+    } catch (error) {
+        next(error);
+    }
+};
+
+module.exports = { registerUser, loginUser, refreshToken, logoutUser, forgotPassword, resetPassword };
