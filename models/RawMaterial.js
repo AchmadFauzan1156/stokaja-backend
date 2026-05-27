@@ -5,7 +5,9 @@ const rawMaterialSchema = new mongoose.Schema({
     stok: { type: Number, required: true, default: 0 },
     satuan: { type: String, required: true },
     hargaModal: { type: Number, default: 0 },
-    stokMinimum: { type: Number, default: 5 }
+    hargaJual: { type: Number, default: 0 },
+    stokMinimum: { type: Number, default: 5 },
+    gambar: { type: String, default: null }
 }, { timestamps: true });
 
 module.exports = mongoose.model('RawMaterial', rawMaterialSchema);

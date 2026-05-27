@@ -7,6 +7,9 @@ const validasiCheckout = [
         .isMongoId().withMessage('ID Produk tidak valid'),
     body('isiKeranjang.*.jumlahBeli')
         .isInt({ min: 1 }).withMessage('Jumlah minimal beli adalah 1'),
+    body('isiKeranjang.*.tipe')
+        .optional()
+        .isIn(['produk', 'bahanBaku']).withMessage('Tipe harus produk atau bahanBaku'),
     body('persentasePajak')
         .optional()
         .isNumeric().withMessage('Persentase pajak harus berupa angka')

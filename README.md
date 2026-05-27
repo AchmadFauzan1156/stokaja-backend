@@ -28,21 +28,13 @@ Dibangun dengan Node.js, Express.js, dan MongoDB Atlas. Mengelola produk, transa
   - [Environment Variables](#environment-variables)
   - [API Reference](#api-reference)
     - [🔐 Autentikasi](#-autentikasi)
-      - [`POST /api/register`](#post-apiregister)
-      - [`POST /api/login`](#post-apilogin)
     - [🛍️ Produk](#️-produk)
-      - [`GET /api/produk`](#get-apiproduk)
-      - [`POST /api/produk`](#post-apiproduk)
-      - [`PUT /api/produk/:id`](#put-apiprodukid)
-      - [`DELETE /api/produk/:id`](#delete-apiprodukid)
+    - [🧪 Bahan Baku](#-bahan-baku)
     - [💳 Transaksi](#-transaksi)
-      - [`POST /api/checkout`](#post-apicheckout)
+    - [📊 Laporan & Grafik](#-laporan--grafik)
     - [👤 Profil](#-profil)
-      - [`GET /api/profil`](#get-apiprofil)
   - [Format Response](#format-response)
   - [WebSocket Events](#websocket-events)
-    - [Events dari Client ke Server](#events-dari-client-ke-server)
-    - [Events dari Server ke Client](#events-dari-server-ke-client)
   - [Keamanan](#keamanan)
   - [Kontribusi](#kontribusi)
 
@@ -50,12 +42,14 @@ Dibangun dengan Node.js, Express.js, dan MongoDB Atlas. Mengelola produk, transa
 
 ## Fitur Utama
 
-- **Autentikasi JWT** — Register, login, dan proteksi endpoint menggunakan JSON Web Token.
+- **Autentikasi JWT** — Register, login, refresh token, dan logout menggunakan JSON Web Token.
 - **Manajemen Produk (CRUD)** — Tambah, ubah, hapus produk lengkap dengan upload & hapus gambar otomatis via Multer.
+- **Manajemen Bahan Baku (CRUD)** — Kelola stok bahan baku dengan harga modal, harga jual, dan upload gambar. Bahan baku juga bisa ditransaksikan melalui POS.
+- **Sistem Transaksi Dual-Collection** — Checkout mendukung produk **dan** bahan baku dalam satu transaksi. Stok dipotong secara atomik dari collection yang tepat.
 - **Paginasi** — API produk mendukung query `?page=` dan `?limit=` untuk efisiensi beban server.
-- **Sistem Transaksi** — Checkout dengan pengurangan stok otomatis dan histori transaksi.
-- **Export Data** — Ekspor data produk dan transaksi ke format Excel (`.xlsx`) dan PDF.
-- **Real-time Chat** — Private messaging antar pengguna menggunakan Socket.io.
+- **Laporan & Grafik** — Laporan keuntungan dengan filter tanggal, grafik pendapatan harian, dan manajemen pesanan.
+- **Export Data** — Ekspor laporan ke Excel (`.xlsx`) dan generate struk PDF per transaksi.
+- **Real-time Alerts** — Notifikasi stok menipis via Socket.io saat checkout.
 - **Keamanan Berlapis** — Helmet, CORS, Rate Limiting, dan validasi input dengan express-validator.
 - **Global Error Handler** — Semua error ditangani terpusat dengan format response yang konsisten.
 
@@ -82,28 +76,35 @@ Dibangun dengan Node.js, Express.js, dan MongoDB Atlas. Mengelola produk, transa
 
 ```
 stokaja-backend/
-├── config/             # Konfigurasi database dan app
+├── config/             # Konfigurasi database, socket.io
+│   ├── db.js
+│   └── socket.js
 ├── controllers/        # Logic handler untuk setiap resource
 │   ├── authController.js
-│   ├── produkController.js
-│   ├── transaksiController.js
-│   └── profilController.js
-├── middlewares/        # Middleware kustom (auth, error handler, dll.)
-│   ├── authMiddleware.js
+│   ├── productController.js
+│   ├── rawMaterialController.js
+│   ├── transactionController.js
+│   └── userController.js
+├── middlewares/        # Middleware kustom
+│   ├── auth.js
+│   ├── roleMiddleware.js
+│   ├── upload.js
 │   └── errorHandler.js
 ├── models/             # Skema Mongoose
 │   ├── User.js
-│   ├── Produk.js
-│   └── Transaksi.js
+│   ├── Product.js
+│   ├── RawMaterial.js
+│   └── Transaction.js
 ├── routes/             # Definisi routing
 │   ├── authRoutes.js
-│   ├── produkRoutes.js
-│   ├── transaksiRoutes.js
-│   └── profilRoutes.js
-├── utils/              # Helper functions
+│   ├── productRoutes.js
+│   ├── rawMaterialRoutes.js
+│   ├── transactionRoutes.js
+│   └── userRoutes.js
 ├── validations/        # Aturan validasi input
-├── uploads/            # File gambar produk (di-ignore git)
-├── .env.example        # Template environment variables
+├── utils/              # Helper functions
+├── uploads/            # File gambar produk & bahan baku
+├── .env.example
 ├── server.js           # Entry point aplikasi
 └── package.json
 ```
@@ -392,65 +393,141 @@ Menghapus produk beserta file gambarnya dari server.
 
 ---
 
+### 🧪 Bahan Baku
+
+Endpoint bahan baku membutuhkan autentikasi. **CRUD** hanya untuk `admin`, **GET** juga untuk `kasir`.
+
+#### `GET /api/v1/bahan-baku`
+
+Mengambil semua bahan baku. Akses: `admin`, `kasir`.
+
+**Response Sukses `200`:**
+```json
+[
+  {
+    "_id": "64f1a2b3c4d5e6f7a8b9c0d5",
+    "namaBahan": "Tepung Terigu",
+    "stok": 50,
+    "satuan": "kg",
+    "hargaModal": 8000,
+    "hargaJual": 12000,
+    "stokMinimum": 10,
+    "gambar": "1716800000-tepung.jpg"
+  }
+]
+```
+
+#### `POST /api/v1/bahan-baku`
+
+Tambah bahan baku baru. Menggunakan `multipart/form-data` untuk upload gambar. Akses: `admin`.
+
+| Field | Tipe | Wajib | Deskripsi |
+|---|---|---|---|
+| `namaBahan` | `string` | Ya | Nama bahan baku |
+| `stok` | `number` | Ya | Jumlah stok |
+| `satuan` | `string` | Ya | Satuan (kg, gram, liter, pcs, dll) |
+| `hargaModal` | `number` | Tidak | Harga beli/modal |
+| `hargaJual` | `number` | Tidak | Harga jual ke pelanggan |
+| `stokMinimum` | `number` | Tidak | Batas minimum stok (default: 5) |
+| `gambar` | `file` | Tidak | Gambar bahan baku |
+
+#### `PUT /api/v1/bahan-baku/:id`
+
+Edit bahan baku. Gambar lama dihapus otomatis jika diganti. Akses: `admin`.
+
+#### `DELETE /api/v1/bahan-baku/:id`
+
+Hapus bahan baku beserta file gambarnya. Akses: `admin`.
+
+---
+
 ### 💳 Transaksi
 
-#### `POST /api/checkout`
+#### `POST /api/v1/checkout`
 
-Melakukan transaksi baru dan memotong stok produk secara otomatis.
+Melakukan transaksi baru. Mendukung **produk dan bahan baku** dalam satu transaksi. Stok dipotong secara atomik menggunakan MongoDB transaction.
 
-Membutuhkan autentikasi.
+Akses: `admin`, `kasir`, `pelanggan`.
 
 **Request Body:**
 ```json
 {
-  "items": [
-    { "produkId": "64f1a2b3c4d5e6f7a8b9c0d1", "jumlah": 2 },
-    { "produkId": "64f1a2b3c4d5e6f7a8b9c0d2", "jumlah": 1 }
-  ]
+  "isiKeranjang": [
+    { "produkId": "64f1a2b3c4d5e6f7a8b9c0d1", "jumlahBeli": 2, "tipe": "produk" },
+    { "produkId": "64f1a2b3c4d5e6f7a8b9c0d5", "jumlahBeli": 1, "tipe": "bahanBaku" }
+  ],
+  "persentasePajak": 10
 }
 ```
+
+| Field | Tipe | Wajib | Deskripsi |
+|---|---|---|---|
+| `isiKeranjang[].produkId` | `MongoId` | Ya | ID produk atau bahan baku |
+| `isiKeranjang[].jumlahBeli` | `number` | Ya | Jumlah yang dibeli (min: 1) |
+| `isiKeranjang[].tipe` | `string` | Tidak | `"produk"` (default) atau `"bahanBaku"` |
+| `persentasePajak` | `number` | Tidak | Persentase pajak (default: 0) |
 
 **Response Sukses `201`:**
 ```json
 {
-  "success": true,
-  "message": "Transaksi berhasil",
-  "data": {
-    "transaksiId": "64f1a2b3c4d5e6f7a8b9c0d3",
-    "total": 450000,
-    "waktu": "2024-09-01T10:30:00.000Z"
-  }
+  "pesan": "Checkout berhasil!",
+  "rincianBiaya": {
+    "totalBarang": 150000,
+    "pajakDikenakan": 15000,
+    "totalBayar": 165000,
+    "keuntunganBersih": 50000
+  },
+  "struk": { "_id": "...", "nomorResi": "STK-...", "..." }
 }
 ```
 
-**Response Error — Stok Tidak Cukup `400`:**
-```json
-{
-  "success": false,
-  "message": "Stok tidak cukup untuk produk: Baju Batik (tersedia: 1, diminta: 2)"
-}
-```
+#### `GET /api/v1/pesananku`
+
+Riwayat pesanan pelanggan yang sedang login. Akses: `pelanggan`, `admin`.
+
+#### `GET /api/v1/transaksi`
+
+Daftar semua pesanan toko. Akses: `admin`, `kasir`. Query: `?status=pending|diproses|dikirim|selesai`.
+
+#### `PATCH /api/v1/transaksi/:id/status`
+
+Ubah status pesanan. Akses: `admin`, `kasir`.
+
+**Request Body:** `{ "statusBaru": "diproses" }`
+
+#### `GET /api/v1/transaksi/:id/pdf`
+
+Generate struk PDF untuk transaksi. Akses: semua (pelanggan hanya bisa lihat struk sendiri).
+
+---
+
+### 📊 Laporan & Grafik
+
+Semua endpoint di bawah hanya untuk `admin`.
+
+#### `GET /api/v1/laporan`
+
+Laporan keuntungan. Query: `?startDate=2024-01-01&endDate=2024-12-31`.
+
+#### `GET /api/v1/grafik`
+
+Data grafik pendapatan harian (transaksi berstatus `selesai`).
+
+#### `GET /api/v1/laporan/excel`
+
+Download laporan dalam format Excel (`.xlsx`). Query: `?startDate=...&endDate=...`.
 
 ---
 
 ### 👤 Profil
 
-#### `GET /api/profil`
+#### `GET /api/v1/profil`
 
 Mengambil data profil pengguna yang sedang login. Membutuhkan autentikasi.
 
-**Response Sukses `200`:**
-```json
-{
-  "success": true,
-  "data": {
-    "id": "64f1a2b3c4d5e6f7a8b9c0d1",
-    "nama": "Budi Santoso",
-    "email": "budi@example.com",
-    "createdAt": "2024-08-15T08:00:00.000Z"
-  }
-}
-```
+#### `PUT /api/v1/profil`
+
+Mengubah data profil. Membutuhkan autentikasi.
 
 ---
 

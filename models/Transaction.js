@@ -14,7 +14,8 @@ const transactionSchema = new mongoose.Schema({
         index: true
     },
     keranjang: [{
-        produkId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
+        produkId: { type: mongoose.Schema.Types.ObjectId, required: true, refPath: 'keranjang.tipeItem' },
+        tipeItem: { type: String, enum: ['Product', 'RawMaterial'], default: 'Product' },
         jumlahBeli: { type: Number, required: true },
         hargaSatuan: { type: Number }
     }],

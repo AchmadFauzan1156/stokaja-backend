@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const Transaction = require('../models/Transaction');
 const Product = require('../models/Product');
+const RawMaterial = require('../models/RawMaterial');
 const buatNomorResi = require('../utils/generateResi');
 const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit');
@@ -19,40 +20,81 @@ const checkoutKasir = async (req, res, next) => {
 
         // POTONG STOK SECARA ATOMIK (LANGSUNG SAAT LOOPING)
         for (let item of isiKeranjang) {
-            // Gunakan findOneAndUpdate untuk mengunci dan memotong stok di 1 langkah milidetik yang sama
-            const produk = await Product.findOneAndUpdate(
-                {
-                    _id: item.produkId,
-                    stok: { $gte: item.jumlahBeli } // SYARAT: Stok di DB harus >= jumlah yang dibeli
-                },
-                {
-                    $inc: { stok: -item.jumlahBeli } // Langsung potong stoknya
-                },
-                { returnDocument: 'after', session } // WAJIB lampirkan session!
-            );
+            const tipe = item.tipe || 'produk'; // Default: produk
             
-            if (!produk) {
-                // Jika produk tidak ditemukan ATAU stoknya ternyata kurang dari jumlah beli, batalkan!
-                throw new Error(`Gagal: Stok produk ID ${item.produkId} tidak mencukupi atau produk dihapus.`);
-            }
+            if (tipe === 'bahanBaku') {
+                // --- BAHAN BAKU ---
+                const bahan = await RawMaterial.findOneAndUpdate(
+                    {
+                        _id: item.produkId,
+                        stok: { $gte: item.jumlahBeli }
+                    },
+                    {
+                        $inc: { stok: -item.jumlahBeli }
+                    },
+                    { returnDocument: 'after', session }
+                );
 
-            totalHargaBarang += (produk.harga * item.jumlahBeli);
-            totalModalBarang += ((produk.hargaModal || 0) * item.jumlahBeli);
+                if (!bahan) {
+                    throw new Error(`Gagal: Stok bahan baku ID ${item.produkId} tidak mencukupi atau bahan dihapus.`);
+                }
 
-            keranjangValid.push({
-                produkId: produk._id,
-                jumlahBeli: item.jumlahBeli,
-                hargaSatuan: produk.harga
-            });
+                totalHargaBarang += (bahan.hargaJual * item.jumlahBeli);
+                totalModalBarang += ((bahan.hargaModal || 0) * item.jumlahBeli);
 
-            // Trigger Socket.io jika stok menipis
-            if (produk.stok <= (produk.stokMinimum || 5)) {
-                const io = req.app.get('io');
-                if (io) {
-                    io.emit('alertAdmin', {
-                        tipe: 'STOK_MENIPIS',
-                        pesan: `⚠️ Peringatan: Stok ${produk.nama} sisa ${produk.stok} pcs!`
-                    });
+                keranjangValid.push({
+                    produkId: bahan._id,
+                    tipeItem: 'RawMaterial',
+                    jumlahBeli: item.jumlahBeli,
+                    hargaSatuan: bahan.hargaJual
+                });
+
+                // Trigger Socket.io jika stok menipis
+                if (bahan.stok <= (bahan.stokMinimum || 5)) {
+                    const io = req.app.get('io');
+                    if (io) {
+                        io.emit('alertAdmin', {
+                            tipe: 'STOK_MENIPIS',
+                            pesan: `⚠️ Peringatan: Stok bahan baku ${bahan.namaBahan} sisa ${bahan.stok} ${bahan.satuan}!`
+                        });
+                    }
+                }
+            } else {
+                // --- PRODUK BIASA ---
+                const produk = await Product.findOneAndUpdate(
+                    {
+                        _id: item.produkId,
+                        stok: { $gte: item.jumlahBeli }
+                    },
+                    {
+                        $inc: { stok: -item.jumlahBeli }
+                    },
+                    { returnDocument: 'after', session }
+                );
+                
+                if (!produk) {
+                    throw new Error(`Gagal: Stok produk ID ${item.produkId} tidak mencukupi atau produk dihapus.`);
+                }
+
+                totalHargaBarang += (produk.harga * item.jumlahBeli);
+                totalModalBarang += ((produk.hargaModal || 0) * item.jumlahBeli);
+
+                keranjangValid.push({
+                    produkId: produk._id,
+                    tipeItem: 'Product',
+                    jumlahBeli: item.jumlahBeli,
+                    hargaSatuan: produk.harga
+                });
+
+                // Trigger Socket.io jika stok menipis
+                if (produk.stok <= (produk.stokMinimum || 5)) {
+                    const io = req.app.get('io');
+                    if (io) {
+                        io.emit('alertAdmin', {
+                            tipe: 'STOK_MENIPIS',
+                            pesan: `⚠️ Peringatan: Stok ${produk.nama} sisa ${produk.stok} ${produk.satuan}!`
+                        });
+                    }
                 }
             }
         }
@@ -97,7 +139,7 @@ const checkoutKasir = async (req, res, next) => {
         session.endSession();
 
         // Tangkap pesan error buatan kita (stok habis)
-        if (error.message.includes('Gagal: Stok produk')) {
+        if (error.message.includes('Gagal: Stok')) {
             return res.status(400).json({ pesan: error.message });
         }
         
@@ -108,7 +150,7 @@ const checkoutKasir = async (req, res, next) => {
 const lihatPesananSaya = async (req, res, next) => {
     try {
         const riwayatPesanan = await Transaction.find({ pelangganId: req.user.id })
-            .populate('keranjang.produkId', 'nama gambar')
+            .populate('keranjang.produkId', 'nama namaBahan gambar')
             .sort({ createdAt: -1 });
 
         res.status(200).json({
@@ -194,7 +236,7 @@ const lihatDaftarPesanan = async (req, res, next) => {
         }
 
         const daftarPesanan = await Transaction.find(aturanPencarian)
-            .populate('keranjang.produkId', 'nama harga')
+            .populate('keranjang.produkId', 'nama namaBahan harga hargaJual')
             .sort({ createdAt: -1 });
         
         res.status(200).json({
@@ -286,7 +328,7 @@ const exportLaporanExcel = async (req, res, next) => {
 // FITUR GENERATE STRUK PDF
 const generateStrukPDF = async (req, res, next) => {
     try {
-        const transaksi = await Transaction.findById(req.params.id).populate('keranjang.produkId', 'nama');
+        const transaksi = await Transaction.findById(req.params.id).populate('keranjang.produkId', 'nama namaBahan');
         
         if (!transaksi) return res.status(404).json({ message: 'Transaksi tidak ditemukan' });
 
@@ -323,7 +365,8 @@ const generateStrukPDF = async (req, res, next) => {
         
         transaksi.keranjang.forEach(item => {
             const subtotal = item.jumlahBeli * item.hargaSatuan;
-            doc.fontSize(10).text(`${item.produkId.nama} x ${item.jumlahBeli} @ Rp ${item.hargaSatuan.toLocaleString()} = Rp ${subtotal.toLocaleString()}`);
+            const namaItem = item.produkId.nama || item.produkId.namaBahan || 'Item';
+            doc.fontSize(10).text(`${namaItem} x ${item.jumlahBeli} @ Rp ${item.hargaSatuan.toLocaleString()} = Rp ${subtotal.toLocaleString()}`);
         });
 
         doc.moveDown();
