@@ -12,7 +12,13 @@ const validasiCheckout = [
         .isIn(['produk', 'bahanBaku']).withMessage('Tipe harus produk atau bahanBaku'),
     body('persentasePajak')
         .optional()
-        .isNumeric().withMessage('Persentase pajak harus berupa angka')
+        .isNumeric().withMessage('Persentase pajak harus berupa angka'),
+    body('metodePembayaran')
+        .optional()
+        .isString().withMessage('Metode pembayaran harus berupa string'),
+    body('jumlahDibayar')
+        .optional()
+        .isNumeric().withMessage('Jumlah dibayar harus berupa angka')
 ];
 
 module.exports = { validasiCheckout };

@@ -11,7 +11,8 @@ const {
     grafikPendapatan,
     lihatDaftarPesanan,
     exportLaporanExcel,
-    generateStrukPDF
+    generateStrukPDF,
+    laporanPerProduk
 } = require('../controllers/transactionController');
 
 const { validasiCheckout } = require('../validations/transactionValidation');
@@ -28,6 +29,7 @@ router.get('/transaksi/:id/pdf', auth, generateStrukPDF);
 
 // HANYA Admin yang boleh lihat laporan keuntungan & Excel
 router.get('/laporan', auth, authorizeRoles('admin'), laporanKeuntungan);
+router.get('/laporan/per-produk', auth, authorizeRoles('admin'), laporanPerProduk);
 router.get('/grafik', auth, authorizeRoles('admin'), grafikPendapatan);
 router.get('/laporan/excel', auth, authorizeRoles('admin'), exportLaporanExcel);
 

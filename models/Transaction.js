@@ -19,9 +19,21 @@ const transactionSchema = new mongoose.Schema({
         jumlahBeli: { type: Number, required: true },
         hargaSatuan: { type: Number }
     }],
+    metodePembayaran: {
+        type: String,
+        default: 'tunai'
+    },
+    jumlahDibayar: {
+        type: Number,
+        default: 0
+    },
+    kembalian: {
+        type: Number,
+        default: 0
+    },
     pajak: {
         type: Number,
-        default: 0 // Simpan nominal pajaknya (misal: Rp 11.000)
+        default: 0
     },
     totalHarga: {
         type: Number,
@@ -29,7 +41,7 @@ const transactionSchema = new mongoose.Schema({
     },
     marginKeuntungan: {
         type: Number,
-        default: 0 // Menyimpan (Harga Jual - Harga Modal)
+        default: 0
     },
     statusPesanan: {
         type: String,

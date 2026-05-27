@@ -12,7 +12,7 @@ const checkoutKasir = async (req, res, next) => {
     session.startTransaction();
 
     try {
-        const { isiKeranjang, lokasiPengiriman, persentasePajak = 0 } = req.body;
+        const { isiKeranjang, lokasiPengiriman, persentasePajak = 0, metodePembayaran = 'tunai', jumlahDibayar = 0 } = req.body;
         
         let totalHargaBarang = 0;
         let totalModalBarang = 0;
@@ -103,11 +103,17 @@ const checkoutKasir = async (req, res, next) => {
         const totalBayarLengkap = totalHargaBarang + nominalPajak;
         const labaBersih = totalHargaBarang - totalModalBarang;
 
+        // Hitung kembalian
+        const kembalianDihitung = jumlahDibayar > 0 ? jumlahDibayar - totalBayarLengkap : 0;
+
         // SIMPAN TRANSAKSI
         const transaksiBaru = new Transaction({
             nomorResi: buatNomorResi(),
             pelangganId: req.user && req.user.role === 'pelanggan' ? req.user.id : null,
             keranjang: keranjangValid,
+            metodePembayaran: metodePembayaran,
+            jumlahDibayar: jumlahDibayar || totalBayarLengkap,
+            kembalian: kembalianDihitung > 0 ? kembalianDihitung : 0,
             pajak: nominalPajak,
             totalHarga: totalBayarLengkap,
             marginKeuntungan: labaBersih,
@@ -127,7 +133,10 @@ const checkoutKasir = async (req, res, next) => {
                 totalBarang: totalHargaBarang,
                 pajakDikenakan: nominalPajak,
                 totalBayar: totalBayarLengkap,
-                keuntunganBersih: labaBersih
+                keuntunganBersih: labaBersih,
+                metodePembayaran: metodePembayaran,
+                jumlahDibayar: jumlahDibayar || totalBayarLengkap,
+                kembalian: kembalianDihitung > 0 ? kembalianDihitung : 0
             },
             struk: transaksiBaru
         });
@@ -385,6 +394,65 @@ const generateStrukPDF = async (req, res, next) => {
     }
 };
 
+// LAPORAN MARGIN PER PRODUK
+const laporanPerProduk = async (req, res, next) => {
+    try {
+        const { startDate, endDate } = req.query;
+        let matchStage = { statusPesanan: 'selesai' };
+
+        if (startDate && endDate) {
+            matchStage.createdAt = {
+                $gte: new Date(startDate),
+                $lte: new Date(new Date(endDate).setHours(23, 59, 59, 999))
+            };
+        }
+
+        const dataPerProduk = await Transaction.aggregate([
+            { $match: matchStage },
+            { $unwind: '$keranjang' },
+            {
+                $group: {
+                    _id: {
+                        produkId: '$keranjang.produkId',
+                        tipeItem: '$keranjang.tipeItem'
+                    },
+                    totalTerjual: { $sum: '$keranjang.jumlahBeli' },
+                    totalPendapatan: { $sum: { $multiply: ['$keranjang.hargaSatuan', '$keranjang.jumlahBeli'] } },
+                    jumlahTransaksi: { $sum: 1 }
+                }
+            },
+            { $sort: { totalPendapatan: -1 } }
+        ]);
+
+        // Populate nama produk/bahan baku
+        const hasil = await Promise.all(dataPerProduk.map(async (item) => {
+            let nama = 'Item Dihapus';
+            if (item._id.tipeItem === 'Product') {
+                const p = await Product.findById(item._id.produkId).select('nama');
+                if (p) nama = p.nama;
+            } else {
+                const b = await RawMaterial.findById(item._id.produkId).select('namaBahan');
+                if (b) nama = b.namaBahan;
+            }
+            return {
+                produkId: item._id.produkId,
+                tipeItem: item._id.tipeItem,
+                nama,
+                totalTerjual: item.totalTerjual,
+                totalPendapatan: item.totalPendapatan,
+                jumlahTransaksi: item.jumlahTransaksi
+            };
+        }));
+
+        res.status(200).json({
+            pesan: 'Laporan per produk berhasil dibuat',
+            data: hasil
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
     checkoutKasir,
     lihatPesananSaya,
@@ -393,5 +461,6 @@ module.exports = {
     grafikPendapatan,
     lihatDaftarPesanan,
     exportLaporanExcel,
-    generateStrukPDF
+    generateStrukPDF,
+    laporanPerProduk
 };

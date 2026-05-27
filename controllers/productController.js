@@ -29,12 +29,22 @@ const lihatProduk = async (req, res, next) => {
         const limit = parseInt(req.query.limit) || 10;
         const skip = (page - 1) * limit;
 
-        const semuaProduk = await Product.find()
+        // Filter berdasarkan search dan kategori
+        let filter = {};
+        if (req.query.search) {
+            filter.nama = { $regex: req.query.search, $options: 'i' };
+        }
+        if (req.query.kategori) {
+            filter.kategori = req.query.kategori;
+        }
+
+        const semuaProduk = await Product.find(filter)
+            .populate('kategori', 'nama')
             .skip(skip)
             .limit(limit)
             .sort({ createdAt: -1 });
 
-        const totalData = await Product.countDocuments();
+        const totalData = await Product.countDocuments(filter);
 
         res.status(200).json({
             total: totalData,

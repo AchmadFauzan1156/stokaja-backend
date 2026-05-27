@@ -6,6 +6,15 @@ const productSchema = new mongoose.Schema({
         required: true,
         index: true
     },
+    deskripsi: {
+        type: String,
+        default: null
+    },
+    kategori: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Category',
+        default: null
+    },
     harga: {
         type: Number,
         required: true,
