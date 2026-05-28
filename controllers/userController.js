@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const cloudinary = require('../config/cloudinary');
+const bcrypt = require('bcrypt');
 
 const getPublicId = (url) => {
     if (!url) return null;
@@ -37,6 +38,19 @@ const updateProfil = async (req, res, next) => {
             noHP: req.body.noHP,
             alamatLengkap: req.body.alamatLengkap
         };
+
+        // Handle password update if requested
+        if (req.body.passwordBaru) {
+            if (!req.body.passwordLama) {
+                return res.status(400).json({ pesan: 'Password lama wajib diisi untuk mengganti password baru!' });
+            }
+            const isMatch = await bcrypt.compare(req.body.passwordLama, userLama.password);
+            if (!isMatch) {
+                return res.status(400).json({ pesan: 'Password lama tidak cocok!' });
+            }
+            const salt = await bcrypt.genSalt(12);
+            updateData.password = await bcrypt.hash(req.body.passwordBaru, salt);
+        }
 
         if (req.file) {
             if (userLama.avatar) {
