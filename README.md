@@ -235,7 +235,7 @@ Authorization: Bearer <access_token>
 
 ### 🔐 Autentikasi
 
-#### `POST /api/register`
+#### `POST /api/v1/register`
 
 Mendaftarkan akun pengguna baru.
 
@@ -266,7 +266,7 @@ Mendaftarkan akun pengguna baru.
 
 ---
 
-#### `POST /api/login`
+#### `POST /api/v1/login`
 
 Login dan mendapatkan access token.
 
@@ -658,7 +658,7 @@ socket.on('pesanBaru', ({ pengirim, teks, waktu }) => {
 ### 🔐 Reset Password
 | Method | Endpoint | Keterangan | Akses |
 |---|---|---|---|
-| `POST` | `/api/v1/forgot-password`| Mengirim link reset password (dummy) | Public |
+| `POST` | `/api/v1/forgot-password`| Mengirim link reset password via Nodemailer | Public |
 | `POST` | `/api/v1/reset-password/:token`| Mengubah password berdasarkan token | Public |
 
 ### 💬 Live Chat

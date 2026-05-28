@@ -1,14 +1,24 @@
 const Product = require('../models/Product');
-const fs = require('fs');
-const path = require('path');
+const cloudinary = require('../config/cloudinary');
+
+const getPublicId = (url) => {
+    if (!url) return null;
+    const folderName = 'stokaja_uploads';
+    const parts = url.split(`/${folderName}/`);
+    if(parts.length > 1) {
+        const filePart = parts[1].split('.')[0];
+        return `${folderName}/${filePart}`;
+    }
+    return null;
+};
 
 const tambahProduk = async (req, res, next) => {
     try {
-        const namaFileGambar = req.file ? req.file.filename : null;
+        const urlGambar = req.file ? req.file.path : null;
         
         const produkData = {
             ...req.body,
-            gambar: namaFileGambar
+            gambar: urlGambar
         };
         
         const produk = new Product(produkData);
@@ -71,12 +81,12 @@ const editProduk = async (req, res, next) => {
 
         if (req.file) {
             if (produkLama.gambar) {
-                const oldPath = path.join(__dirname, '..', 'uploads', produkLama.gambar);
-                if (fs.existsSync(oldPath)) {
-                    fs.unlinkSync(oldPath);
+                const publicId = getPublicId(produkLama.gambar);
+                if (publicId) {
+                    await cloudinary.uploader.destroy(publicId);
                 }
             }
-            dataBaru.gambar = req.file.filename;
+            dataBaru.gambar = req.file.path;
         }
 
         const produkDiperbarui = await Product.findByIdAndUpdate(
@@ -104,9 +114,9 @@ const hapusProduk = async (req, res, next) => {
         }
 
         if (produk.gambar) {
-            const imagePath = path.join(__dirname, '..', 'uploads', produk.gambar);
-            if (fs.existsSync(imagePath)) {
-                fs.unlinkSync(imagePath);
+            const publicId = getPublicId(produk.gambar);
+            if (publicId) {
+                await cloudinary.uploader.destroy(publicId);
             }
         }
 

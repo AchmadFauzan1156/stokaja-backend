@@ -1,13 +1,23 @@
 const RawMaterial = require('../models/RawMaterial');
-const fs = require('fs');
-const path = require('path');
+const cloudinary = require('../config/cloudinary');
+
+const getPublicId = (url) => {
+    if (!url) return null;
+    const folderName = 'stokaja_uploads';
+    const parts = url.split(`/${folderName}/`);
+    if(parts.length > 1) {
+        const filePart = parts[1].split('.')[0];
+        return `${folderName}/${filePart}`;
+    }
+    return null;
+};
 
 // Create: Tambah bahan baku baru (dengan upload gambar)
 const tambahBahanBaku = async (req, res, next) => {
     try {
         const data = { ...req.body };
         if (req.file) {
-            data.gambar = req.file.filename;
+            data.gambar = req.file.path;
         }
         const bahanBaru = new RawMaterial(data);
         await bahanBaru.save();
@@ -36,12 +46,12 @@ const updateBahanBaku = async (req, res, next) => {
         if (req.file) {
             const bahanLama = await RawMaterial.findById(req.params.id);
             if (bahanLama && bahanLama.gambar) {
-                const oldPath = path.join(__dirname, '..', 'uploads', bahanLama.gambar);
-                if (fs.existsSync(oldPath)) {
-                    fs.unlinkSync(oldPath);
+                const publicId = getPublicId(bahanLama.gambar);
+                if (publicId) {
+                    await cloudinary.uploader.destroy(publicId);
                 }
             }
-            data.gambar = req.file.filename;
+            data.gambar = req.file.path;
         }
 
         const bahanDiperbarui = await RawMaterial.findByIdAndUpdate(
@@ -65,9 +75,9 @@ const hapusBahanBaku = async (req, res, next) => {
 
         // Hapus file gambar jika ada
         if (bahanDihapus.gambar) {
-            const filePath = path.join(__dirname, '..', 'uploads', bahanDihapus.gambar);
-            if (fs.existsSync(filePath)) {
-                fs.unlinkSync(filePath);
+            const publicId = getPublicId(bahanDihapus.gambar);
+            if (publicId) {
+                await cloudinary.uploader.destroy(publicId);
             }
         }
 

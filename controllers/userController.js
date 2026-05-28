@@ -1,6 +1,16 @@
 const User = require('../models/User');
-const fs = require('fs');
-const path = require('path');
+const cloudinary = require('../config/cloudinary');
+
+const getPublicId = (url) => {
+    if (!url) return null;
+    const folderName = 'stokaja_uploads';
+    const parts = url.split(`/${folderName}/`);
+    if(parts.length > 1) {
+        const filePart = parts[1].split('.')[0];
+        return `${folderName}/${filePart}`;
+    }
+    return null;
+};
 
 const lihatProfil = async (req, res, next) => {
     try {
@@ -30,12 +40,12 @@ const updateProfil = async (req, res, next) => {
 
         if (req.file) {
             if (userLama.avatar) {
-                const oldPath = path.join(__dirname, '..', 'uploads', userLama.avatar);
-                if (fs.existsSync(oldPath)) {
-                    fs.unlinkSync(oldPath);
+                const publicId = getPublicId(userLama.avatar);
+                if (publicId) {
+                    await cloudinary.uploader.destroy(publicId);
                 }
             }
-            updateData.avatar = req.file.filename;
+            updateData.avatar = req.file.path;
         }
 
         const profilDiperbarui = await User.findByIdAndUpdate(
