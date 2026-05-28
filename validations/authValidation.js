@@ -1,7 +1,7 @@
 const { body } = require('express-validator');
 
 const validasiRegister = [
-    body('nama')
+    body('namaLengkap')
         .trim()
         .notEmpty().withMessage('Nama lengkap tidak boleh kosong')
         .isLength({ min: 3 }).withMessage('Nama minimal 3 karakter'),
