@@ -68,6 +68,24 @@ const lihatProduk = async (req, res, next) => {
     }
 };
 
+// DETAIL 1 PRODUK BY ID
+const lihatDetailProduk = async (req, res, next) => {
+    try {
+        const produk = await Product.findById(req.params.id).populate('kategori', 'nama');
+        
+        if (!produk) {
+            return res.status(404).json({ pesan: 'Produk tidak ditemukan!' });
+        }
+
+        res.status(200).json({
+            pesan: 'Detail produk berhasil dimuat',
+            data: produk
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 const editProduk = async (req, res, next) => {
     try {
         const produkId = req.params.id;
@@ -127,4 +145,4 @@ const hapusProduk = async (req, res, next) => {
     }
 };
 
-module.exports = { tambahProduk, lihatProduk, editProduk, hapusProduk };
+module.exports = { tambahProduk, lihatProduk, lihatDetailProduk, editProduk, hapusProduk };

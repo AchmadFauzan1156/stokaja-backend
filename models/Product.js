@@ -38,8 +38,12 @@ const productSchema = new mongoose.Schema({
     gambar: {
         type: String,
         default: null
+    },
+    stokMaksimum: {
+        type: Number,
+        default: 100
     }
-});
+}, { timestamps: true });
 
 const Product = mongoose.model('Product', productSchema);
 

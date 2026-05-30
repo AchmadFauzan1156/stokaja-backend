@@ -43,14 +43,18 @@ Dibangun dengan Node.js, Express.js, dan MongoDB Atlas. Mengelola produk, transa
 ## Fitur Utama
 
 - **Autentikasi JWT** — Register, login, refresh token, dan logout menggunakan JSON Web Token.
-- **Manajemen Produk (CRUD)** — Tambah, ubah, hapus produk lengkap dengan upload & hapus gambar otomatis via Multer.
+- **Manajemen Produk (CRUD)** — Tambah, ubah, hapus produk lengkap dengan upload & hapus gambar otomatis via Cloudinary.
 - **Manajemen Bahan Baku (CRUD)** — Kelola stok bahan baku dengan harga modal, harga jual, dan upload gambar. Bahan baku juga bisa ditransaksikan melalui POS.
 - **Sistem Transaksi Dual-Collection** — Checkout mendukung produk **dan** bahan baku dalam satu transaksi. Stok dipotong secara atomik dari collection yang tepat.
-- **Paginasi** — API produk mendukung query `?page=` dan `?limit=` untuk efisiensi beban server.
-- **Laporan & Grafik** — Laporan keuntungan dengan filter tanggal, grafik pendapatan harian, dan manajemen pesanan.
+- **Paginasi** — API produk & transaksi mendukung query `?page=` dan `?limit=` untuk efisiensi beban server.
+- **Dashboard Stats** — Endpoint khusus untuk ringkasan statistik admin (total produk, transaksi hari ini, stok menipis, dll).
+- **Laporan & Grafik** — Laporan keuntungan dengan filter tanggal, grafik pendapatan harian, laporan per-produk, dan manajemen pesanan.
 - **Export Data** — Ekspor laporan ke Excel (`.xlsx`) dan generate struk PDF per transaksi.
+- **Live Chat** — Chat real-time pelanggan-admin via Socket.io dengan riwayat, daftar kontak, dan status baca.
+- **Multi-Alamat** — User bisa mengelola banyak alamat pengiriman (CRUD).
+- **Reset Password** — Forgot & reset password via email (Nodemailer).
 - **Real-time Alerts** — Notifikasi stok menipis via Socket.io saat checkout.
-- **Keamanan Berlapis** — Helmet, CORS, Rate Limiting, dan validasi input dengan express-validator.
+- **Keamanan Berlapis** — Helmet, multi-origin CORS, Rate Limiting, dan validasi input dengan express-validator.
 - **Global Error Handler** — Semua error ditangani terpusat dengan format response yang konsisten.
 
 ---
@@ -76,11 +80,17 @@ Dibangun dengan Node.js, Express.js, dan MongoDB Atlas. Mengelola produk, transa
 
 ```
 stokaja-backend/
-├── config/             # Konfigurasi database, socket.io
+├── config/             # Konfigurasi database, cloudinary, socket.io
+│   ├── cloudinary.js
 │   ├── db.js
 │   └── socket.js
 ├── controllers/        # Logic handler untuk setiap resource
+│   ├── adminController.js
 │   ├── authController.js
+│   ├── categoryController.js
+│   ├── chatController.js
+│   ├── dashboardController.js
+│   ├── paymentMethodController.js
 │   ├── productController.js
 │   ├── rawMaterialController.js
 │   ├── transactionController.js
@@ -91,19 +101,26 @@ stokaja-backend/
 │   ├── upload.js
 │   └── errorHandler.js
 ├── models/             # Skema Mongoose
-│   ├── User.js
+│   ├── Category.js
+│   ├── Message.js
+│   ├── PaymentMethod.js
 │   ├── Product.js
 │   ├── RawMaterial.js
-│   └── Transaction.js
+│   ├── Transaction.js
+│   └── User.js
 ├── routes/             # Definisi routing
+│   ├── adminRoutes.js
 │   ├── authRoutes.js
+│   ├── categoryRoutes.js
+│   ├── chatRoutes.js
+│   ├── dashboardRoutes.js
+│   ├── paymentMethodRoutes.js
 │   ├── productRoutes.js
 │   ├── rawMaterialRoutes.js
 │   ├── transactionRoutes.js
 │   └── userRoutes.js
 ├── validations/        # Aturan validasi input
-├── utils/              # Helper functions
-├── uploads/            # File gambar produk & bahan baku
+├── utils/              # Helper functions (logger, sendEmail, generateResi)
 ├── .env.example
 ├── server.js           # Entry point aplikasi
 └── package.json
@@ -625,7 +642,7 @@ socket.on('pesanBaru', ({ pengirim, teks, waktu }) => {
 
 ---
 
-## Tambahan API Baru (Fase 1 & Fase 2)
+## API Lengkap (Semua Endpoint)
 
 ### 📑 Kategori Produk
 | Method | Endpoint | Keterangan | Akses |
@@ -646,13 +663,14 @@ socket.on('pesanBaru', ({ pengirim, teks, waktu }) => {
 ### 👥 Kelola Akun (User Management)
 | Method | Endpoint | Keterangan | Akses |
 |---|---|---|---|
-| `GET` | `/api/v1/users` | Lihat semua pengguna (bisa di-search) | Admin |
+| `GET` | `/api/v1/users` | Lihat semua pengguna (`?role=`, `?search=`) | Admin |
 | `PATCH`| `/api/v1/users/:id/role`| Ubah role pengguna (misal: jadi kasir) | Admin |
 | `DELETE`| `/api/v1/users/:id` | Hapus pengguna | Admin |
 
-### 📊 Laporan Tambahan
+### 📊 Dashboard & Laporan
 | Method | Endpoint | Keterangan | Akses |
 |---|---|---|---|
+| `GET` | `/api/v1/dashboard/stats` | Ringkasan statistik admin (total produk, user, transaksi hari ini, stok menipis) | Admin |
 | `GET` | `/api/v1/laporan/per-produk` | Agregasi margin dan penjualan tiap barang | Admin |
 
 ### 🔐 Reset Password
@@ -664,7 +682,22 @@ socket.on('pesanBaru', ({ pengirim, teks, waktu }) => {
 ### 💬 Live Chat
 | Method | Endpoint | Keterangan | Akses |
 |---|---|---|---|
-| `GET` | `/api/v1/chat/history` | Memuat riwayat chat | Authenticated |
+| `GET` | `/api/v1/chat/history` | Riwayat chat (`?pelangganId=` untuk admin) | Authenticated |
+| `GET` | `/api/v1/chat/contacts` | Daftar pelanggan yang pernah chat + pesan terakhir | Admin, Kasir |
+| `PATCH` | `/api/v1/chat/:id/read` | Tandai 1 pesan sudah dibaca | Authenticated |
+| `PATCH` | `/api/v1/chat/pelanggan/:pelangganId/read-all` | Tandai semua pesan dari 1 pelanggan sudah dibaca | Admin, Kasir |
+
+### 🏠 Alamat Pengiriman
+| Method | Endpoint | Keterangan | Akses |
+|---|---|---|---|
+| `POST` | `/api/v1/profil/alamat` | Tambah alamat baru | Authenticated |
+| `PUT` | `/api/v1/profil/alamat/:alamatId` | Edit alamat | Authenticated |
+| `DELETE` | `/api/v1/profil/alamat/:alamatId` | Hapus alamat | Authenticated |
+
+### 🛍️ Produk (Endpoint Baru)
+| Method | Endpoint | Keterangan | Akses |
+|---|---|---|---|
+| `GET` | `/api/v1/produk/:id` | Detail 1 produk by ID | Authenticated |
 
 ---
 

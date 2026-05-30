@@ -160,12 +160,31 @@ const checkoutKasir = async (req, res, next) => {
 
 const lihatPesananSaya = async (req, res, next) => {
     try {
-        const riwayatPesanan = await Transaction.find({ pelangganId: req.user.id })
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 20;
+        const skip = (page - 1) * limit;
+
+        let filter = { pelangganId: req.user.id };
+
+        // Filter by status
+        if (req.query.status) {
+            filter.statusPesanan = req.query.status;
+        }
+
+        const riwayatPesanan = await Transaction.find(filter)
             .populate('keranjang.produkId', 'nama namaBahan gambar')
-            .sort({ createdAt: -1 });
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit);
+
+        const totalData = await Transaction.countDocuments(filter);
 
         res.status(200).json({
             pesan: 'Berhasil memuat riwayat pesanan Anda',
+            total: totalData,
+            page,
+            limit,
+            totalPages: Math.ceil(totalData / limit),
             data: riwayatPesanan
         });
     } catch (error) {
@@ -239,20 +258,44 @@ const ubahStatusPesanan = async (req, res, next) => {
 
 const lihatDaftarPesanan = async (req, res, next) => {
     try {
-        const { status } = req.query;
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 20;
+        const skip = (page - 1) * limit;
+
+        const { status, search, startDate, endDate } = req.query;
         let aturanPencarian = {};
         
         if (status) {
             aturanPencarian.statusPesanan = status;
         }
 
+        // Search by nomor resi
+        if (search) {
+            aturanPencarian.nomorResi = { $regex: search, $options: 'i' };
+        }
+
+        // Filter tanggal
+        if (startDate && endDate) {
+            aturanPencarian.createdAt = {
+                $gte: new Date(startDate),
+                $lte: new Date(new Date(endDate).setHours(23, 59, 59, 999))
+            };
+        }
+
         const daftarPesanan = await Transaction.find(aturanPencarian)
-            .populate('keranjang.produkId', 'nama namaBahan harga hargaJual')
-            .sort({ createdAt: -1 });
+            .populate('keranjang.produkId', 'nama namaBahan harga hargaJual gambar')
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit);
+
+        const totalData = await Transaction.countDocuments(aturanPencarian);
         
         res.status(200).json({
             pesan: 'Berhasil memuat daftar pesanan',
-            jumlahData: daftarPesanan.length,
+            total: totalData,
+            page,
+            limit,
+            totalPages: Math.ceil(totalData / limit),
             data: daftarPesanan
         });
     } catch (error) {

@@ -2,11 +2,14 @@ const express = require('express');
 const router = express.Router();
 const auth = require('../middlewares/auth');
 const upload = require('../middlewares/upload');
-const { tambahProduk, lihatProduk, editProduk, hapusProduk } = require('../controllers/productController');
+const { tambahProduk, lihatProduk, lihatDetailProduk, editProduk, hapusProduk } = require('../controllers/productController');
 
 const { aturanValidasiProduk, cekHasilValidasi } = require('../validations/productValidation');
 
 router.get('/produk', auth, lihatProduk);
+
+// Detail 1 produk by ID
+router.get('/produk/:id', auth, lihatDetailProduk);
 
 router.post(
     '/produk',

@@ -18,10 +18,12 @@ const userSchema = new mongoose.Schema({
         type: String,
         default: null
     },
-    alamatLengkap: {
-        type: String,
-        default: null
-    },
+    alamat: [{
+        label: { type: String, required: true },
+        alamatDetail: { type: String, required: true },
+        lat: { type: Number, default: null },
+        lng: { type: Number, default: null }
+    }],
     avatar: {
         type: String,
         default: null

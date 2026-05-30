@@ -28,7 +28,15 @@ app.use(helmet({
     crossOriginEmbedderPolicy: false
 }));
 const corsOptions = {
-    origin: process.env.CORS_ORIGIN || '*', // Jika di .env kosong, sementara buka semua
+    origin: function (origin, callback) {
+        const allowedOrigins = (process.env.CORS_ORIGIN || '*').split(',').map(o => o.trim());
+        // Izinkan request tanpa origin (mobile apps, curl, dll)
+        if (!origin || allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error('CORS tidak diizinkan untuk origin ini'));
+        }
+    },
     credentials: true // Mengizinkan cookie/header otorisasi
 };
 app.use(cors(corsOptions));
@@ -66,6 +74,7 @@ const categoryRoutes = require('./routes/categoryRoutes');
 const paymentMethodRoutes = require('./routes/paymentMethodRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const chatRoutes = require('./routes/chatRoutes');
+const dashboardRoutes = require('./routes/dashboardRoutes');
 
 const API_VERSION = '/api/v1';
 
@@ -78,6 +87,7 @@ app.use(API_VERSION, categoryRoutes);
 app.use(API_VERSION, paymentMethodRoutes);
 app.use(API_VERSION, adminRoutes);
 app.use(API_VERSION, chatRoutes);
+app.use(API_VERSION, dashboardRoutes);
 
 app.use('/uploads', express.static('uploads'));
 
