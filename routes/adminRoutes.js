@@ -8,11 +8,9 @@ const {
     hapusUser
 } = require('../controllers/adminController');
 
-// Semua endpoint hanya untuk admin
-router.use(auth, authorizeRoles('admin'));
-
-router.get('/users', lihatSemuaUser);
-router.patch('/users/:id/role', ubahRoleUser);
-router.delete('/users/:id', hapusUser);
+// Terapkan middleware langsung ke masing-masing endpoint agar tidak bocor (leak) ke router lain
+router.get('/users', auth, authorizeRoles('admin'), lihatSemuaUser);
+router.patch('/users/:id/role', auth, authorizeRoles('admin'), ubahRoleUser);
+router.delete('/users/:id', auth, authorizeRoles('admin'), hapusUser);
 
 module.exports = router;
