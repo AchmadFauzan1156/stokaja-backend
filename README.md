@@ -2,15 +2,18 @@
 
 # 📦 StokAja! — Backend API
 
-**Backend RESTful API untuk aplikasi manajemen inventaris StokAja!**
+**Backend RESTful API untuk aplikasi manajemen inventaris & POS StokAja!**
 
-Dibangun dengan Node.js, Express.js, dan MongoDB Atlas. Mengelola produk, transaksi stok, autentikasi pengguna, dan komunikasi *real-time* via WebSocket.
+Dibangun dengan Node.js, Express.js, dan MongoDB Atlas. Mengelola produk, transaksi, autentikasi pengguna, upload gambar via Cloudinary, dan komunikasi *real-time* via Socket.io.
 
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
 [![Express](https://img.shields.io/badge/Express-5.2.1-000000?style=flat-square&logo=express&logoColor=white)](https://expressjs.com)
 [![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-47A248?style=flat-square&logo=mongodb&logoColor=white)](https://www.mongodb.com)
+[![Cloudinary](https://img.shields.io/badge/Cloudinary-Upload-3448C5?style=flat-square&logo=cloudinary&logoColor=white)](https://cloudinary.com)
 [![Socket.io](https://img.shields.io/badge/Socket.io-4.8.3-010101?style=flat-square&logo=socket.io&logoColor=white)](https://socket.io)
 [![License: ISC](https://img.shields.io/badge/License-ISC-blue?style=flat-square)](LICENSE)
+
+🌐 **Production:** [stokaja-backend-production.up.railway.app](https://stokaja-backend-production.up.railway.app)
 
 </div>
 
@@ -18,44 +21,34 @@ Dibangun dengan Node.js, Express.js, dan MongoDB Atlas. Mengelola produk, transa
 
 ## Daftar Isi
 
-- [📦 StokAja! — Backend API](#-stokaja--backend-api)
-  - [Daftar Isi](#daftar-isi)
-  - [Fitur Utama](#fitur-utama)
-  - [Tech Stack](#tech-stack)
-  - [Struktur Proyek](#struktur-proyek)
-  - [Prasyarat](#prasyarat)
-  - [Instalasi \& Menjalankan Lokal](#instalasi--menjalankan-lokal)
-  - [Environment Variables](#environment-variables)
-  - [API Reference](#api-reference)
-    - [🔐 Autentikasi](#-autentikasi)
-    - [🛍️ Produk](#️-produk)
-    - [🧪 Bahan Baku](#-bahan-baku)
-    - [💳 Transaksi](#-transaksi)
-    - [📊 Laporan & Grafik](#-laporan--grafik)
-    - [👤 Profil](#-profil)
-  - [Format Response](#format-response)
-  - [WebSocket Events](#websocket-events)
-  - [Keamanan](#keamanan)
-  - [Kontribusi](#kontribusi)
+- [Fitur Utama](#fitur-utama)
+- [Tech Stack](#tech-stack)
+- [Struktur Proyek](#struktur-proyek)
+- [Prasyarat](#prasyarat)
+- [Instalasi & Menjalankan Lokal](#instalasi--menjalankan-lokal)
+- [Environment Variables](#environment-variables)
+- [API Reference](#api-reference)
+- [WebSocket Events](#websocket-events)
+- [Deployment (Railway)](#deployment-railway)
+- [Keamanan](#keamanan)
+- [Kontribusi](#kontribusi)
 
 ---
 
 ## Fitur Utama
 
-- **Autentikasi JWT** — Register, login, refresh token, dan logout menggunakan JSON Web Token.
-- **Manajemen Produk (CRUD)** — Tambah, ubah, hapus produk lengkap dengan upload & hapus gambar otomatis via Cloudinary.
-- **Manajemen Bahan Baku (CRUD)** — Kelola stok bahan baku dengan harga modal, harga jual, dan upload gambar. Bahan baku juga bisa ditransaksikan melalui POS.
-- **Sistem Transaksi Dual-Collection** — Checkout mendukung produk **dan** bahan baku dalam satu transaksi. Stok dipotong secara atomik dari collection yang tepat.
-- **Paginasi** — API produk & transaksi mendukung query `?page=` dan `?limit=` untuk efisiensi beban server.
-- **Dashboard Stats** — Endpoint khusus untuk ringkasan statistik admin (total produk, transaksi hari ini, stok menipis, dll).
-- **Laporan & Grafik** — Laporan keuntungan dengan filter tanggal, grafik pendapatan harian, laporan per-produk, dan manajemen pesanan.
+- **Autentikasi JWT (Dual Token)** — Register, login, refresh token, dan logout. Access token berumur pendek (15 menit) + refresh token berumur panjang (7 hari).
+- **Manajemen Produk (CRUD)** — Tambah, ubah, hapus produk dengan upload gambar otomatis ke **Cloudinary** (gambar lama dihapus otomatis saat diganti).
+- **Manajemen Bahan Baku (CRUD)** — Kelola stok bahan baku dengan harga modal, harga jual, dan upload gambar ke Cloudinary.
+- **Sistem Transaksi (POS)** — Checkout mendukung produk **dan** bahan baku dalam satu transaksi. Stok dipotong secara atomik.
+- **Manajemen Profil** — Update nama, email, password, dan **upload foto profil ke Cloudinary**. Multi-alamat pengiriman (CRUD).
+- **Dashboard Admin** — Statistik ringkasan (total produk, user, transaksi hari ini, stok menipis).
+- **Laporan & Grafik** — Laporan keuntungan dengan filter tanggal, grafik pendapatan harian, laporan per-produk.
 - **Export Data** — Ekspor laporan ke Excel (`.xlsx`) dan generate struk PDF per transaksi.
-- **Live Chat** — Chat real-time pelanggan-admin via Socket.io dengan riwayat, daftar kontak, dan status baca.
-- **Multi-Alamat** — User bisa mengelola banyak alamat pengiriman (CRUD).
-- **Reset Password** — Forgot & reset password via email (Nodemailer).
-- **Real-time Alerts** — Notifikasi stok menipis via Socket.io saat checkout.
-- **Keamanan Berlapis** — Helmet, multi-origin CORS, Rate Limiting, dan validasi input dengan express-validator.
-- **Global Error Handler** — Semua error ditangani terpusat dengan format response yang konsisten.
+- **Live Chat Real-time** — Chat pelanggan ↔ admin via Socket.io dengan riwayat pesan, daftar kontak, dan status baca.
+- **Reset Password** — Forgot & reset password via email (Nodemailer + Gmail).
+- **Role-Based Access** — 3 role: `admin`, `kasir`, `pelanggan`. Setiap endpoint memiliki pembatasan akses sesuai role.
+- **Keamanan Berlapis** — Helmet, multi-origin CORS, Rate Limiting, input validation, bcrypt password hashing.
 
 ---
 
@@ -65,14 +58,16 @@ Dibangun dengan Node.js, Express.js, dan MongoDB Atlas. Mengelola produk, transa
 |---|---|
 | **Runtime** | Node.js 18+ |
 | **Framework** | Express.js 5.2.1 |
-| **Database** | MongoDB Atlas via Mongoose ODM |
+| **Database** | MongoDB Atlas via Mongoose 9.x |
 | **Real-time** | Socket.io 4.8.3 |
-| **Autentikasi** | JSON Web Token (jsonwebtoken) + bcrypt |
-| **Upload File** | Multer 2.1.1 |
+| **Autentikasi** | JSON Web Token + bcrypt |
+| **Upload Gambar** | Multer 2.1.1 + Cloudinary (multer-storage-cloudinary) |
 | **Validasi** | express-validator 7.3.2 |
 | **Keamanan** | Helmet, CORS, express-rate-limit |
+| **Email** | Nodemailer (Gmail) |
 | **Export** | ExcelJS (xlsx), PDFKit (pdf) |
-| **Dev Tools** | Nodemon, ESLint, Prettier |
+| **Logging** | Winston + Morgan |
+| **Dev Tools** | Nodemon, ESLint, Prettier, Jest + Supertest |
 
 ---
 
@@ -80,35 +75,35 @@ Dibangun dengan Node.js, Express.js, dan MongoDB Atlas. Mengelola produk, transa
 
 ```
 stokaja-backend/
-├── config/             # Konfigurasi database, cloudinary, socket.io
-│   ├── cloudinary.js
-│   ├── db.js
-│   └── socket.js
-├── controllers/        # Logic handler untuk setiap resource
-│   ├── adminController.js
-│   ├── authController.js
+├── config/                 # Konfigurasi external services
+│   ├── cloudinary.js       # Konfigurasi Cloudinary SDK
+│   ├── db.js               # Koneksi MongoDB Atlas
+│   └── socket.js           # Inisialisasi Socket.io + auth middleware
+├── controllers/            # Business logic handler
+│   ├── adminController.js  # Kelola user (CRUD, ubah role)
+│   ├── authController.js   # Register, login, logout, refresh token, reset password
 │   ├── categoryController.js
-│   ├── chatController.js
+│   ├── chatController.js   # Riwayat chat, kontak, tandai dibaca
 │   ├── dashboardController.js
 │   ├── paymentMethodController.js
 │   ├── productController.js
 │   ├── rawMaterialController.js
-│   ├── transactionController.js
-│   └── userController.js
-├── middlewares/        # Middleware kustom
-│   ├── auth.js
-│   ├── roleMiddleware.js
-│   ├── upload.js
-│   └── errorHandler.js
-├── models/             # Skema Mongoose
+│   ├── transactionController.js  # Checkout, pesanan, laporan, export
+│   └── userController.js   # Profil, avatar upload, CRUD alamat
+├── middlewares/
+│   ├── auth.js             # Verifikasi JWT access token
+│   ├── roleMiddleware.js   # Pembatasan akses berdasarkan role
+│   ├── upload.js           # Multer + CloudinaryStorage
+│   └── errorHandler.js     # Global error handler
+├── models/                 # Skema Mongoose
 │   ├── Category.js
-│   ├── Message.js
+│   ├── Message.js          # Chat messages (pengirim, penerima, isiPesan, dibaca)
 │   ├── PaymentMethod.js
-│   ├── Product.js
+│   ├── Product.js          # Produk (stok, stokMinimum, stokMaksimum, hargaModal)
 │   ├── RawMaterial.js
-│   ├── Transaction.js
-│   └── User.js
-├── routes/             # Definisi routing
+│   ├── Transaction.js      # Transaksi (keranjang, nomorResi, statusPesanan)
+│   └── User.js             # User (namaLengkap, avatar, alamat[], role)
+├── routes/                 # Definisi routing per-resource
 │   ├── adminRoutes.js
 │   ├── authRoutes.js
 │   ├── categoryRoutes.js
@@ -119,10 +114,11 @@ stokaja-backend/
 │   ├── rawMaterialRoutes.js
 │   ├── transactionRoutes.js
 │   └── userRoutes.js
-├── validations/        # Aturan validasi input
-├── utils/              # Helper functions (logger, sendEmail, generateResi)
+├── validations/            # Aturan validasi input (express-validator)
+├── utils/                  # Helper (logger, sendEmail, generateResi)
+├── test/                   # Unit & integration tests (Jest + Supertest)
 ├── .env.example
-├── server.js           # Entry point aplikasi
+├── server.js               # Entry point aplikasi
 └── package.json
 ```
 
@@ -130,11 +126,10 @@ stokaja-backend/
 
 ## Prasyarat
 
-Pastikan sudah terinstall di mesin Anda:
-
-- **Node.js** versi 18 atau lebih baru — [Download Node.js](https://nodejs.org)
-- **npm** versi 9 atau lebih baru (sudah termasuk dengan Node.js)
-- **Akun MongoDB Atlas** (gratis) — [Daftar di mongodb.com](https://www.mongodb.com/cloud/atlas/register)
+- **Node.js** versi 18+ — [Download](https://nodejs.org)
+- **npm** versi 9+
+- **Akun MongoDB Atlas** (gratis) — [Daftar](https://www.mongodb.com/cloud/atlas/register)
+- **Akun Cloudinary** (gratis) — [Daftar](https://cloudinary.com/users/register_free)
 
 ---
 
@@ -155,95 +150,101 @@ npm install
 
 **3. Buat file `.env`**
 
-Salin file template dan isi nilai yang sesuai:
-
 ```bash
 cp .env.example .env
 ```
 
-Lalu edit file `.env` (lihat bagian [Environment Variables](#environment-variables) di bawah).
+Edit file `.env` sesuai panduan di bagian [Environment Variables](#environment-variables).
 
 **4. Jalankan server**
 
-- Mode development (auto-restart saat ada perubahan file):
-  ```bash
-  npm run dev
-  ```
+```bash
+# Development (auto-restart dengan nodemon)
+npm run dev
 
-- Mode production:
-  ```bash
-  npm start
-  ```
+# Production
+npm start
+```
 
-Server akan berjalan di `http://localhost:5000` (atau port yang diatur di `.env`).
+Server berjalan di `http://localhost:5001` (atau sesuai `PORT` di `.env`).
 
 ---
 
 ## Environment Variables
 
-Buat file `.env` di root proyek berdasarkan `.env.example`:
+Buat file `.env` di root proyek:
 
 ```env
 # ==============================================
 # SERVER
 # ==============================================
-PORT=5000
+PORT=5001
 NODE_ENV=development
 
 # ==============================================
-# DATABASE
-# Salin Connection String dari MongoDB Atlas
+# DATABASE (MongoDB Atlas)
 # ==============================================
-MONGO_URI=mongodb+srv://<username>:<password>@<cluster>.mongodb.net/<nama_database>
+MONGO_URI=mongodb+srv://<username>:<password>@<cluster>.mongodb.net/<database>
 
 # ==============================================
 # AUTENTIKASI JWT
-# Gunakan random string minimal 32 karakter:
-#   $ openssl rand -hex 32
+# Generate: openssl rand -hex 32
 # ==============================================
-JWT_SECRET=ganti_dengan_random_string_minimal_32_karakter
+JWT_SECRET=<random_string_min_32_karakter>
 JWT_EXPIRES_IN=15m
-JWT_REFRESH_SECRET=ganti_dengan_random_string_berbeda_minimal_32_karakter
+JWT_REFRESH_SECRET=<random_string_berbeda_min_32_karakter>
 JWT_REFRESH_EXPIRES_IN=7d
 
 # ==============================================
-# CORS
-# Isi dengan URL frontend yang diizinkan
+# CORS — URL frontend yang diizinkan (pisah koma)
 # ==============================================
-CORS_ORIGIN=http://localhost:3000
+CORS_ORIGIN=http://localhost:3000,http://localhost:3001
 
 # ==============================================
-# EMAIL KONFIGURASI (NODEMAILER)
+# EMAIL (Nodemailer + Gmail App Password)
 # ==============================================
 EMAIL_SERVICE=gmail
-EMAIL_USER=...........@gmail.com
-EMAIL_PASS=..._..._..._...
+EMAIL_USER=email@gmail.com
+EMAIL_PASS=xxxx_xxxx_xxxx_xxxx
+
+# ==============================================
+# CLOUDINARY (Upload Gambar)
+# Dapatkan dari: https://console.cloudinary.com
+# ==============================================
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
 ```
 
-| Variable | Deskripsi | Contoh Nilai |
-|---|---|---|
-| `PORT` | Port yang digunakan server | `5000` |
-| `NODE_ENV` | Environment aplikasi | `development` / `production` |
-| `MONGO_URI` | Connection string MongoDB Atlas | `mongodb+srv://...` |
-| `JWT_SECRET` | Secret key untuk signing access token (min. 32 karakter) | `openssl rand -hex 32` |
-| `JWT_EXPIRES_IN` | Masa berlaku access token | `15m`, `1h`, `1d` |
-| `JWT_REFRESH_SECRET` | Secret key untuk refresh token (berbeda dari JWT_SECRET) | `openssl rand -hex 32` |
-| `JWT_REFRESH_EXPIRES_IN` | Masa berlaku refresh token | `7d`, `30d` |
-| `CORS_ORIGIN` | URL frontend yang diizinkan mengakses API | `http://localhost:3000` |
-| `EMAIL_SERVICE` | Layanan email yang digunakan untuk Nodemailer | `gmail` |
-| `EMAIL_USER` | Alamat email pengirim (toko) | `............@gmail.com` |
-| `EMAIL_PASS` | Sandi aplikasi (App Password) dari Google/layanan email | `..._..._...` |
+| Variable | Deskripsi |
+|---|---|
+| `PORT` | Port server (default: `5001`) |
+| `NODE_ENV` | `development` atau `production` |
+| `MONGO_URI` | Connection string MongoDB Atlas |
+| `JWT_SECRET` | Secret untuk signing access token |
+| `JWT_EXPIRES_IN` | Masa berlaku access token (`15m`) |
+| `JWT_REFRESH_SECRET` | Secret untuk refresh token (harus berbeda) |
+| `JWT_REFRESH_EXPIRES_IN` | Masa berlaku refresh token (`7d`) |
+| `CORS_ORIGIN` | URL frontend yang diizinkan (pisahkan dengan koma) |
+| `EMAIL_SERVICE` | Service email (`gmail`) |
+| `EMAIL_USER` | Email pengirim |
+| `EMAIL_PASS` | App Password dari Google |
+| `CLOUDINARY_CLOUD_NAME` | Nama cloud Cloudinary |
+| `CLOUDINARY_API_KEY` | API Key Cloudinary |
+| `CLOUDINARY_API_SECRET` | API Secret Cloudinary |
 
-> **Penting:** Jangan pernah meng-commit file `.env` ke repository. File ini sudah dimasukkan ke `.gitignore`.
+> ⚠️ **Penting:** Jangan commit file `.env` ke repository. Pastikan `.env` ada di `.gitignore`.
+
+> ⚠️ **Railway:** Saat deploy ke Railway, pastikan `CLOUDINARY_API_KEY` dan `CLOUDINARY_API_SECRET` tidak tertukar. Ini adalah penyebab error upload gambar yang paling sering terjadi.
 
 ---
 
 ## API Reference
 
-Base URL: `http://localhost:5000`
+**Base URL:** `https://stokaja-backend-production.up.railway.app/api/v1`
+**Lokal:** `http://localhost:5001/api/v1`
 
-Semua endpoint yang membutuhkan autentikasi harus menyertakan header:
-
+Semua endpoint yang memerlukan autentikasi harus menyertakan header:
 ```
 Authorization: Bearer <access_token>
 ```
@@ -252,465 +253,233 @@ Authorization: Bearer <access_token>
 
 ### 🔐 Autentikasi
 
-#### `POST /api/v1/register`
+| Method | Endpoint | Deskripsi | Akses |
+|---|---|---|---|
+| `POST` | `/register` | Registrasi user baru | Public |
+| `POST` | `/login` | Login, mendapatkan access + refresh token | Public |
+| `POST` | `/refresh-token` | Tukar refresh token → access token baru | Public |
+| `POST` | `/logout` | Hapus refresh token dari database | Authenticated |
+| `POST` | `/forgot-password` | Kirim link reset password via email | Public |
+| `POST` | `/reset-password/:token` | Reset password dengan token | Public |
 
-Mendaftarkan akun pengguna baru.
-
-**Request Body:**
+**Register — `POST /register`**
 ```json
 {
-  "nama": "Budi Santoso",
+  "namaLengkap": "Budi Santoso",
   "email": "budi@example.com",
   "password": "password123"
 }
 ```
 
-**Response Sukses `201`:**
+**Login — `POST /login`**
 ```json
+// Request
+{ "email": "budi@example.com", "password": "password123" }
+
+// Response 200
 {
-  "success": true,
-  "message": "Registrasi berhasil",
+  "pesan": "Login berhasil",
   "data": {
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "user": {
-      "id": "64f1a2b3c4d5e6f7a8b9c0d1",
-      "nama": "Budi Santoso",
-      "email": "budi@example.com"
-    }
+    "accessToken": "eyJhbGciOi...",
+    "refreshToken": "eyJhbGciOi...",
+    "user": { "_id": "...", "namaLengkap": "Budi Santoso", "email": "...", "role": "pelanggan" }
   }
 }
 ```
 
----
-
-#### `POST /api/v1/login`
-
-Login dan mendapatkan access token.
-
-**Request Body:**
+**Refresh Token — `POST /refresh-token`**
 ```json
-{
-  "email": "budi@example.com",
-  "password": "password123"
-}
-```
+// Request
+{ "refreshToken": "eyJhbGciOi..." }
 
-**Response Sukses `200`:**
-```json
-{
-  "success": true,
-  "data": {
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "user": {
-      "id": "64f1a2b3c4d5e6f7a8b9c0d1",
-      "nama": "Budi Santoso",
-      "email": "budi@example.com"
-    }
-  }
-}
+// Response 200
+{ "success": true, "data": { "accessToken": "...", "refreshToken": "..." } }
 ```
 
 ---
 
 ### 🛍️ Produk
 
-Semua endpoint produk membutuhkan autentikasi.
-
-#### `GET /api/produk`
-
-Mengambil daftar produk dengan paginasi.
-
-**Query Parameters:**
-
-| Parameter | Tipe | Default | Deskripsi |
+| Method | Endpoint | Deskripsi | Akses |
 |---|---|---|---|
-| `page` | `number` | `1` | Halaman yang ingin diambil |
-| `limit` | `number` | `10` | Jumlah produk per halaman |
-| `search` | `string` | — | Cari produk berdasarkan nama |
+| `GET` | `/produk` | Daftar produk (`?page=`, `?limit=`, `?search=`) | Authenticated |
+| `GET` | `/produk/:id` | Detail produk by ID | Authenticated |
+| `POST` | `/produk` | Tambah produk baru (form-data + gambar) | Admin |
+| `PUT` | `/produk/:id` | Edit produk (gambar lama dihapus dari Cloudinary) | Admin |
+| `DELETE` | `/produk/:id` | Hapus produk + gambar dari Cloudinary | Admin |
 
-**Contoh Request:**
-```
-GET /api/produk?page=1&limit=10&search=baju
-Authorization: Bearer <token>
-```
-
-**Response Sukses `200`:**
-```json
-{
-  "success": true,
-  "data": {
-    "produk": [
-      {
-        "id": "64f1a2b3c4d5e6f7a8b9c0d1",
-        "nama": "Baju Batik",
-        "harga": 150000,
-        "stok": 25,
-        "gambar": "/uploads/baju-batik.jpg",
-        "createdAt": "2024-09-01T10:00:00.000Z"
-      }
-    ],
-    "total": 50,
-    "page": 1,
-    "totalPages": 5
-  }
-}
-```
-
----
-
-#### `POST /api/produk`
-
-Menambah produk baru. Menggunakan `multipart/form-data` untuk upload gambar.
-
-**Request (form-data):**
+**Field Produk (form-data):**
 
 | Field | Tipe | Wajib | Deskripsi |
 |---|---|---|---|
-| `nama` | `string` | Ya | Nama produk |
-| `harga` | `number` | Ya | Harga produk (dalam Rupiah) |
-| `stok` | `number` | Ya | Jumlah stok awal |
-| `deskripsi` | `string` | Tidak | Deskripsi produk |
-| `gambar` | `file` | Tidak | Gambar produk (jpg/png, maks 2MB) |
-
-**Response Sukses `201`:**
-```json
-{
-  "success": true,
-  "message": "Produk berhasil ditambahkan",
-  "data": {
-    "id": "64f1a2b3c4d5e6f7a8b9c0d2",
-    "nama": "Baju Batik",
-    "harga": 150000,
-    "stok": 25,
-    "gambar": "/uploads/baju-batik-1693562400000.jpg"
-  }
-}
-```
-
----
-
-#### `PUT /api/produk/:id`
-
-Mengubah data produk. Bisa sekaligus mengganti gambar.
-
-**Request (form-data):** Field sama seperti `POST /api/produk`, semua opsional.
-
-**Response Sukses `200`:**
-```json
-{
-  "success": true,
-  "message": "Produk berhasil diperbarui",
-  "data": { "id": "64f1a2b3c4d5e6f7a8b9c0d2", "..." }
-}
-```
-
----
-
-#### `DELETE /api/produk/:id`
-
-Menghapus produk beserta file gambarnya dari server.
-
-**Response Sukses `200`:**
-```json
-{
-  "success": true,
-  "message": "Produk berhasil dihapus"
-}
-```
+| `nama` | string | Ya | Nama produk |
+| `deskripsi` | string | Tidak | Deskripsi produk |
+| `kategori` | MongoId | Tidak | ID kategori |
+| `harga` | number | Ya | Harga jual |
+| `hargaModal` | number | Tidak | Harga modal/beli |
+| `stok` | number | Ya | Jumlah stok |
+| `stokMinimum` | number | Tidak | Batas minimum stok (alert) |
+| `stokMaksimum` | number | Tidak | Batas maksimum stok |
+| `satuan` | string | Tidak | Satuan (pcs, kg, dll) |
+| `gambar` | file | Tidak | Gambar produk (jpg/png/webp, di-upload ke Cloudinary) |
 
 ---
 
 ### 🧪 Bahan Baku
 
-Endpoint bahan baku membutuhkan autentikasi. **CRUD** hanya untuk `admin`, **GET** juga untuk `kasir`.
-
-#### `GET /api/v1/bahan-baku`
-
-Mengambil semua bahan baku. Akses: `admin`, `kasir`.
-
-**Response Sukses `200`:**
-```json
-[
-  {
-    "_id": "64f1a2b3c4d5e6f7a8b9c0d5",
-    "namaBahan": "Tepung Terigu",
-    "stok": 50,
-    "satuan": "kg",
-    "hargaModal": 8000,
-    "hargaJual": 12000,
-    "stokMinimum": 10,
-    "gambar": "1716800000-tepung.jpg"
-  }
-]
-```
-
-#### `POST /api/v1/bahan-baku`
-
-Tambah bahan baku baru. Menggunakan `multipart/form-data` untuk upload gambar. Akses: `admin`.
-
-| Field | Tipe | Wajib | Deskripsi |
+| Method | Endpoint | Deskripsi | Akses |
 |---|---|---|---|
-| `namaBahan` | `string` | Ya | Nama bahan baku |
-| `stok` | `number` | Ya | Jumlah stok |
-| `satuan` | `string` | Ya | Satuan (kg, gram, liter, pcs, dll) |
-| `hargaModal` | `number` | Tidak | Harga beli/modal |
-| `hargaJual` | `number` | Tidak | Harga jual ke pelanggan |
-| `stokMinimum` | `number` | Tidak | Batas minimum stok (default: 5) |
-| `gambar` | `file` | Tidak | Gambar bahan baku |
-
-#### `PUT /api/v1/bahan-baku/:id`
-
-Edit bahan baku. Gambar lama dihapus otomatis jika diganti. Akses: `admin`.
-
-#### `DELETE /api/v1/bahan-baku/:id`
-
-Hapus bahan baku beserta file gambarnya. Akses: `admin`.
+| `GET` | `/bahan-baku` | Daftar bahan baku | Admin, Kasir |
+| `POST` | `/bahan-baku` | Tambah bahan baku (form-data + gambar) | Admin |
+| `PUT` | `/bahan-baku/:id` | Edit bahan baku | Admin |
+| `DELETE` | `/bahan-baku/:id` | Hapus bahan baku + gambar | Admin |
 
 ---
 
-### 💳 Transaksi
+### 💳 Transaksi & POS
 
-#### `POST /api/v1/checkout`
+| Method | Endpoint | Deskripsi | Akses |
+|---|---|---|---|
+| `POST` | `/checkout` | Checkout / buat transaksi baru | All Authenticated |
+| `GET` | `/pesananku` | Riwayat pesanan pelanggan (`?limit=`) | Pelanggan, Admin |
+| `GET` | `/transaksi` | Semua pesanan toko (`?status=`) | Admin, Kasir |
+| `PATCH` | `/transaksi/:id/status` | Ubah status pesanan | Admin, Kasir |
+| `GET` | `/transaksi/:id/pdf` | Generate struk PDF | Authenticated |
 
-Melakukan transaksi baru. Mendukung **produk dan bahan baku** dalam satu transaksi. Stok dipotong secara atomik menggunakan MongoDB transaction.
-
-Akses: `admin`, `kasir`, `pelanggan`.
-
-**Request Body:**
+**Checkout — `POST /checkout`**
 ```json
 {
   "isiKeranjang": [
-    { "produkId": "64f1a2b3c4d5e6f7a8b9c0d1", "jumlahBeli": 2, "tipe": "produk" },
-    { "produkId": "64f1a2b3c4d5e6f7a8b9c0d5", "jumlahBeli": 1, "tipe": "bahanBaku" }
+    { "produkId": "64f1...", "jumlahBeli": 2, "tipe": "produk" },
+    { "produkId": "64f2...", "jumlahBeli": 1, "tipe": "bahanBaku" }
   ],
+  "lokasiPengiriman": "Jl. Contoh No. 123",
+  "metodePembayaran": "Transfer Bank",
+  "jumlahDibayar": 200000,
   "persentasePajak": 10
 }
 ```
 
-| Field | Tipe | Wajib | Deskripsi |
+---
+
+### 📊 Dashboard & Laporan
+
+| Method | Endpoint | Deskripsi | Akses |
 |---|---|---|---|
-| `isiKeranjang[].produkId` | `MongoId` | Ya | ID produk atau bahan baku |
-| `isiKeranjang[].jumlahBeli` | `number` | Ya | Jumlah yang dibeli (min: 1) |
-| `isiKeranjang[].tipe` | `string` | Tidak | `"produk"` (default) atau `"bahanBaku"` |
-| `persentasePajak` | `number` | Tidak | Persentase pajak (default: 0) |
-
-**Response Sukses `201`:**
-```json
-{
-  "pesan": "Checkout berhasil!",
-  "rincianBiaya": {
-    "totalBarang": 150000,
-    "pajakDikenakan": 15000,
-    "totalBayar": 165000,
-    "keuntunganBersih": 50000
-  },
-  "struk": { "_id": "...", "nomorResi": "STK-...", "..." }
-}
-```
-
-#### `GET /api/v1/pesananku`
-
-Riwayat pesanan pelanggan yang sedang login. Akses: `pelanggan`, `admin`.
-
-#### `GET /api/v1/transaksi`
-
-Daftar semua pesanan toko. Akses: `admin`, `kasir`. Query: `?status=pending|diproses|dikirim|selesai`.
-
-#### `PATCH /api/v1/transaksi/:id/status`
-
-Ubah status pesanan. Akses: `admin`, `kasir`.
-
-**Request Body:** `{ "statusBaru": "diproses" }`
-
-#### `GET /api/v1/transaksi/:id/pdf`
-
-Generate struk PDF untuk transaksi. Akses: semua (pelanggan hanya bisa lihat struk sendiri).
+| `GET` | `/dashboard/stats` | Statistik ringkasan admin | Admin |
+| `GET` | `/laporan` | Laporan keuntungan (`?startDate=&endDate=`) | Admin |
+| `GET` | `/grafik` | Data grafik pendapatan harian | Admin |
+| `GET` | `/laporan/per-produk` | Penjualan & margin per-produk | Admin |
+| `GET` | `/laporan/excel` | Export laporan ke Excel (.xlsx) | Admin |
 
 ---
 
-### 📊 Laporan & Grafik
+### 👤 Profil & Alamat
 
-Semua endpoint di bawah hanya untuk `admin`.
+| Method | Endpoint | Deskripsi | Akses |
+|---|---|---|---|
+| `GET` | `/profil` | Lihat profil user yang login | Authenticated |
+| `PUT` | `/profil` | Update profil (form-data, termasuk upload avatar ke Cloudinary) | Authenticated |
+| `POST` | `/profil/alamat` | Tambah alamat baru | Authenticated |
+| `PUT` | `/profil/alamat/:alamatId` | Edit alamat | Authenticated |
+| `DELETE` | `/profil/alamat/:alamatId` | Hapus alamat | Authenticated |
 
-#### `GET /api/v1/laporan`
+**Update Profil — `PUT /profil` (form-data)**
 
-Laporan keuntungan. Query: `?startDate=2024-01-01&endDate=2024-12-31`.
-
-#### `GET /api/v1/grafik`
-
-Data grafik pendapatan harian (transaksi berstatus `selesai`).
-
-#### `GET /api/v1/laporan/excel`
-
-Download laporan dalam format Excel (`.xlsx`). Query: `?startDate=...&endDate=...`.
-
----
-
-### 👤 Profil
-
-#### `GET /api/v1/profil`
-
-Mengambil data profil pengguna yang sedang login. Membutuhkan autentikasi.
-
-#### `PUT /api/v1/profil`
-
-Mengubah data profil. Membutuhkan autentikasi.
+| Field | Tipe | Deskripsi |
+|---|---|---|
+| `namaLengkap` | string | Nama lengkap |
+| `email` | string | Email baru (dicek duplikasi) |
+| `noHP` | string | Nomor HP |
+| `passwordLama` | string | Password lama (wajib jika ganti password) |
+| `passwordBaru` | string | Password baru |
+| `avatar` | file | Foto profil (di-upload ke Cloudinary, foto lama dihapus otomatis) |
 
 ---
 
-## Format Response
+### 📑 Kategori & Metode Pembayaran
 
-Semua response API menggunakan format yang konsisten:
+| Method | Endpoint | Deskripsi | Akses |
+|---|---|---|---|
+| `GET` | `/kategori` | Semua kategori | Authenticated |
+| `POST` | `/kategori` | Tambah kategori | Admin |
+| `PUT` | `/kategori/:id` | Edit kategori | Admin |
+| `DELETE` | `/kategori/:id` | Hapus kategori | Admin |
+| `GET` | `/metode-bayar` | Semua metode pembayaran | Authenticated |
+| `POST` | `/metode-bayar` | Tambah metode bayar | Admin |
+| `PUT` | `/metode-bayar/:id` | Edit metode bayar | Admin |
+| `DELETE` | `/metode-bayar/:id` | Hapus metode bayar | Admin |
 
-**Response Sukses:**
-```json
-{
-  "success": true,
-  "message": "Pesan opsional",
-  "data": { ... }
-}
-```
+---
 
-**Response Error:**
-```json
-{
-  "success": false,
-  "message": "Deskripsi error yang terjadi"
-}
-```
+### 💬 Live Chat
 
-**Kode HTTP yang Digunakan:**
+| Method | Endpoint | Deskripsi | Akses |
+|---|---|---|---|
+| `GET` | `/chat/history` | Riwayat chat (`?pelangganId=` untuk admin lihat chat spesifik) | **All Authenticated** |
+| `GET` | `/chat/contacts` | Daftar pelanggan yang pernah chat + pesan terakhir | Admin, Kasir |
+| `PATCH` | `/chat/:id/read` | Tandai 1 pesan sudah dibaca | Authenticated |
+| `PATCH` | `/chat/pelanggan/:pelangganId/read-all` | Tandai semua pesan dari 1 pelanggan sudah dibaca | Admin, Kasir |
 
-| Kode | Keterangan |
-|---|---|
-| `200` | OK — Request berhasil |
-| `201` | Created — Data berhasil dibuat |
-| `400` | Bad Request — Input tidak valid |
-| `401` | Unauthorized — Token tidak ada atau tidak valid |
-| `403` | Forbidden — Tidak punya izin |
-| `404` | Not Found — Resource tidak ditemukan |
-| `409` | Conflict — Data sudah ada (misal: email duplikat) |
-| `429` | Too Many Requests — Rate limit terlampaui |
-| `500` | Internal Server Error — Error di sisi server |
+---
+
+### 👥 Kelola User (Admin)
+
+| Method | Endpoint | Deskripsi | Akses |
+|---|---|---|---|
+| `GET` | `/users` | Daftar user (`?role=`, `?search=`) | Admin |
+| `PATCH` | `/users/:id/role` | Ubah role user | Admin |
+| `DELETE` | `/users/:id` | Hapus user | Admin |
 
 ---
 
 ## WebSocket Events
 
-Koneksi ke WebSocket server menggunakan [Socket.io](https://socket.io).
+Koneksi ke WebSocket menggunakan [Socket.io](https://socket.io).
 
-**Endpoint:** `ws://localhost:5000`
+**URL:** `https://stokaja-backend-production.up.railway.app` (Production) atau `http://localhost:5001` (Lokal)
 
-> **Catatan:** Autentikasi diperlukan saat melakukan koneksi. Kirimkan access token di bagian `auth` pada handshake:
-> ```js
-> const socket = io('http://localhost:5000', {
->   auth: { token: '<access_token>' }
-> });
-> ```
-
-### Events dari Client ke Server
-
-| Event | Payload | Deskripsi |
-|---|---|---|
-| `gabungRuangan` | `"nama_ruangan"` (string) | Bergabung ke private room |
-| `kirimPesanPrivate` | `{ ruangan, teks }` | Mengirim pesan ke ruangan |
-
-### Events dari Server ke Client
-
-| Event | Payload | Deskripsi |
-|---|---|---|
-| `pesanBaru` | `{ pengirim, teks, waktu }` | Pesan baru masuk di ruangan |
-| `bergabung` | `{ ruangan, status }` | Konfirmasi berhasil bergabung |
-| `error` | `"pesan error"` | Notifikasi error dari server |
-
-**Contoh penggunaan:**
+**Autentikasi saat handshake:**
 ```js
-// Bergabung ke ruangan
-socket.emit('gabungRuangan', 'ruangan_A1');
+import { io } from "socket.io-client";
 
-// Mengirim pesan
-socket.emit('kirimPesanPrivate', {
-  ruangan: 'ruangan_A1',
-  teks: 'Halo, stok sudah diperbarui!'
-});
-
-// Mendengarkan pesan baru
-socket.on('pesanBaru', ({ pengirim, teks, waktu }) => {
-  console.log(`[${waktu}] ${pengirim}: ${teks}`);
+const socket = io("https://stokaja-backend-production.up.railway.app", {
+  auth: { token: "<access_token>" },
+  transports: ["websocket", "polling"],
 });
 ```
 
+### Events
+
+| Arah | Event | Payload | Deskripsi |
+|---|---|---|---|
+| Client → Server | `send_message` | `{ penerima: "userId" \| null, pesan: "teks" }` | Kirim pesan (null = ke admin) |
+| Server → Client | `receive_message` | `{ _id, pengirim, penerima, isiPesan, createdAt }` | Pesan baru diterima (broadcast) |
+
 ---
 
-## API Lengkap (Semua Endpoint)
+## Deployment (Railway)
 
-### 📑 Kategori Produk
-| Method | Endpoint | Keterangan | Akses |
-|---|---|---|---|
-| `GET` | `/api/v1/kategori` | Lihat semua kategori | Authenticated |
-| `POST` | `/api/v1/kategori` | Tambah kategori baru | Admin |
-| `PUT` | `/api/v1/kategori/:id` | Update kategori | Admin |
-| `DELETE` | `/api/v1/kategori/:id` | Hapus kategori | Admin |
+Proyek ini di-deploy di [Railway](https://railway.app).
 
-### 💳 Metode Pembayaran
-| Method | Endpoint | Keterangan | Akses |
-|---|---|---|---|
-| `GET` | `/api/v1/metode-bayar` | Lihat semua metode pembayaran | Authenticated |
-| `POST` | `/api/v1/metode-bayar` | Tambah metode bayar | Admin |
-| `PUT` | `/api/v1/metode-bayar/:id` | Update metode bayar | Admin |
-| `DELETE`| `/api/v1/metode-bayar/:id` | Hapus metode bayar | Admin |
-
-### 👥 Kelola Akun (User Management)
-| Method | Endpoint | Keterangan | Akses |
-|---|---|---|---|
-| `GET` | `/api/v1/users` | Lihat semua pengguna (`?role=`, `?search=`) | Admin |
-| `PATCH`| `/api/v1/users/:id/role`| Ubah role pengguna (misal: jadi kasir) | Admin |
-| `DELETE`| `/api/v1/users/:id` | Hapus pengguna | Admin |
-
-### 📊 Dashboard & Laporan
-| Method | Endpoint | Keterangan | Akses |
-|---|---|---|---|
-| `GET` | `/api/v1/dashboard/stats` | Ringkasan statistik admin (total produk, user, transaksi hari ini, stok menipis) | Admin |
-| `GET` | `/api/v1/laporan/per-produk` | Agregasi margin dan penjualan tiap barang | Admin |
-
-### 🔐 Reset Password
-| Method | Endpoint | Keterangan | Akses |
-|---|---|---|---|
-| `POST` | `/api/v1/forgot-password`| Mengirim link reset password via Nodemailer | Public |
-| `POST` | `/api/v1/reset-password/:token`| Mengubah password berdasarkan token | Public |
-
-### 💬 Live Chat
-| Method | Endpoint | Keterangan | Akses |
-|---|---|---|---|
-| `GET` | `/api/v1/chat/history` | Riwayat chat (`?pelangganId=` untuk admin) | Authenticated |
-| `GET` | `/api/v1/chat/contacts` | Daftar pelanggan yang pernah chat + pesan terakhir | Admin, Kasir |
-| `PATCH` | `/api/v1/chat/:id/read` | Tandai 1 pesan sudah dibaca | Authenticated |
-| `PATCH` | `/api/v1/chat/pelanggan/:pelangganId/read-all` | Tandai semua pesan dari 1 pelanggan sudah dibaca | Admin, Kasir |
-
-### 🏠 Alamat Pengiriman
-| Method | Endpoint | Keterangan | Akses |
-|---|---|---|---|
-| `POST` | `/api/v1/profil/alamat` | Tambah alamat baru | Authenticated |
-| `PUT` | `/api/v1/profil/alamat/:alamatId` | Edit alamat | Authenticated |
-| `DELETE` | `/api/v1/profil/alamat/:alamatId` | Hapus alamat | Authenticated |
-
-### 🛍️ Produk (Endpoint Baru)
-| Method | Endpoint | Keterangan | Akses |
-|---|---|---|---|
-| `GET` | `/api/v1/produk/:id` | Detail 1 produk by ID | Authenticated |
+**Catatan penting saat deploy:**
+1. **Tidak perlu Build Command** — Aplikasi Express.js murni tidak memerlukan proses build. Kosongkan Build Command di Railway Settings, atau isi dengan `echo "No build needed"`.
+2. **Start Command:** `npm start` (yang menjalankan `node server.js`).
+3. **Environment Variables:** Pastikan semua variabel di bagian [Environment Variables](#environment-variables) sudah diatur di tab **Variables** Railway
 
 ---
 
 ## Keamanan
 
-Proyek ini mengimplementasikan beberapa lapisan keamanan:
-
-- **Helmet** — Mengatur HTTP security headers secara otomatis.
-- **CORS** — Membatasi domain yang dapat mengakses API.
-- **Rate Limiting** — Membatasi jumlah request per IP untuk mencegah brute force dan DDoS.
-- **Validasi Input** — Semua input divalidasi menggunakan `express-validator` sebelum diproses.
-- **Hashing Password** — Password disimpan menggunakan `bcrypt` dengan salt rounds 12.
-- **JWT** — Token menggunakan algoritma HS256 dengan masa berlaku terbatas.
+| Lapisan | Teknologi | Deskripsi |
+|---|---|---|
+| HTTP Headers | Helmet | Mengatur security headers otomatis |
+| CORS | cors | Multi-origin, credentials enabled |
+| Rate Limiting | express-rate-limit | Maks 100 request/15 menit per IP |
+| Input Validation | express-validator | Validasi semua input sebelum diproses |
+| Password | bcrypt (12 salt rounds) | Hashing password satu arah |
+| Auth | JWT (HS256) | Dual token (access + refresh) |
+| Upload | Cloudinary | File tidak disimpan di server (ephemeral-safe) |
 
 ---
 
@@ -722,7 +491,7 @@ Proyek ini mengimplementasikan beberapa lapisan keamanan:
 4. Push ke branch: `git push origin feat/nama-fitur`
 5. Buat Pull Request.
 
-Harap ikuti konvensi commit: `feat:`, `fix:`, `docs:`, `chore:`, `refactor:`.
+Konvensi commit: `feat:`, `fix:`, `docs:`, `chore:`, `refactor:`.
 
 ---
 
