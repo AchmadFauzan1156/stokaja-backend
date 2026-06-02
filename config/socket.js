@@ -35,9 +35,22 @@ const initSocket = (server) => {
     io.on("connection", (socket) => {
         console.log(`📡 User Terkoneksi ke Socket: ${socket.user.id} (${socket.user.role})`);
 
+        // USER JOIN KE ROOM SESUAI ID MEREKA
+        socket.join(socket.user.id);
+
+        // Jika user adalah admin/kasir, gabungkan mereka ke room khusus admin
+        if (socket.user.role === 'admin' || socket.user.role === 'kasir') {
+            socket.join("admin_room");
+        }
+
         // Ketika user mengirim pesan
         socket.on("send_message", async (data) => {
             try {
+                // SECURITY: Batasi panjang pesan teks maksimal 1000 karakter
+                if (data.pesan && data.pesan.length > 1000) {
+                    return socket.emit("pesan_error", { message: "Pesan terlalu panjang (maksimal 1000 karakter)." });
+                }
+
                 // data format: { penerima: "id_admin" (bisa null), pesan: "Isi teks" }
                 const Message = require('../models/Message');
                 const pesanBaru = new Message({
@@ -47,15 +60,26 @@ const initSocket = (server) => {
                 });
                 await pesanBaru.save();
 
-                // Broadcast kembali pesan ke sender dan penerima agar realtime
-                // Di sistem riil sebaiknya gabung room, tapi sementara broadcast global (dengan flag)
-                io.emit("receive_message", {
+                // Broadcast spesifik (ke sender dan penerima saja, bukan global)
+                const payload = {
                     _id: pesanBaru._id,
                     pengirim: socket.user.id,
                     penerima: data.penerima,
                     isiPesan: data.pesan,
                     createdAt: pesanBaru.createdAt
-                });
+                };
+
+                // Kirim balik ke pengirim (supaya muncul di layar mereka)
+                socket.emit("receive_message", payload);
+
+                // Kirim ke penerima jika ada ID-nya (dan penerima sedang online)
+                if (data.penerima) {
+                    io.to(data.penerima).emit("receive_message", payload);
+                } else {
+                    // Jika penerima null (Admin secara general), kirim ke semua admin
+                    io.to("admin_room").emit("receive_message", payload);
+                }
+
             } catch (error) {
                 console.error("Socket error saat kirim pesan:", error);
             }
