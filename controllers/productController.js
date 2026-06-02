@@ -42,7 +42,9 @@ const lihatProduk = async (req, res, next) => {
         // Filter berdasarkan search dan kategori
         let filter = {};
         if (req.query.search) {
-            filter.nama = { $regex: req.query.search, $options: 'i' };
+            const escapeRegex = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const safeSearch = escapeRegex(req.query.search);
+            filter.nama = { $regex: safeSearch, $options: 'i' };
         }
         if (req.query.kategori) {
             filter.kategori = req.query.kategori;
