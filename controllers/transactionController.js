@@ -167,7 +167,8 @@ const checkoutKasir = async (req, res, next) => {
 const lihatPesananSaya = async (req, res, next) => {
     try {
         const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 20;
+        // SECURITY PATCH: Cegah Memory Overload, limit maksimal 100
+        const limit = Math.min(parseInt(req.query.limit) || 20, 100);
         const skip = (page - 1) * limit;
 
         let filter = { pelangganId: req.user.id };
@@ -278,7 +279,8 @@ const ubahStatusPesanan = async (req, res, next) => {
 const lihatDaftarPesanan = async (req, res, next) => {
     try {
         const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 20;
+        // SECURITY PATCH: Cegah Memory Overload, limit maksimal 100
+        const limit = Math.min(parseInt(req.query.limit) || 20, 100);
         const skip = (page - 1) * limit;
 
         const { status, search, startDate, endDate } = req.query;

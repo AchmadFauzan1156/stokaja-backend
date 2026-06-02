@@ -4,7 +4,8 @@ const User = require('../models/User');
 const lihatSemuaUser = async (req, res, next) => {
     try {
         const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 20;
+        // SECURITY PATCH: Cegah Memory Overload, limit maksimal 100
+        const limit = Math.min(parseInt(req.query.limit) || 20, 100);
         const skip = (page - 1) * limit;
 
         const { role, search } = req.query;

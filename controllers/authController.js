@@ -121,6 +121,12 @@ const logoutUser = async (req, res, next) => {
 const forgotPassword = async (req, res, next) => {
     try {
         const { email } = req.body;
+
+        // SECURITY PATCH: Cegah NoSQL Injection (hanya boleh string)
+        if (typeof email !== 'string') {
+            return res.status(400).json({ success: false, pesan: 'Format email tidak valid' });
+        }
+
         const user = await User.findOne({ email });
 
         if (!user) {
