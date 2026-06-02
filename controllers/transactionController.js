@@ -106,6 +106,11 @@ const checkoutKasir = async (req, res, next) => {
         const totalBayarLengkap = totalHargaBarang + nominalPajak;
         const labaBersih = totalHargaBarang - totalModalBarang;
 
+        // Validasi Logika Bisnis: Cegah pembayaran kurang
+        if (jumlahDibayar > 0 && jumlahDibayar < totalBayarLengkap) {
+            return res.status(400).json({ pesan: `Uang tidak cukup! Total tagihan adalah Rp ${totalBayarLengkap}` });
+        }
+
         // Hitung kembalian
         const kembalianDihitung = jumlahDibayar > 0 ? jumlahDibayar - totalBayarLengkap : 0;
 

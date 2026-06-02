@@ -65,6 +65,8 @@ const updateProfil = async (req, res, next) => {
             }
             const salt = await bcrypt.genSalt(12);
             updateData.password = await bcrypt.hash(req.body.passwordBaru, salt);
+            // SECURITY PATCH: Force logout semua sesi saat password diganti
+            updateData.refreshToken = null;
         }
 
         if (req.file) {

@@ -184,6 +184,8 @@ const resetPassword = async (req, res, next) => {
         user.password = await bcrypt.hash(req.body.password, 12);
         user.resetPasswordToken = undefined;
         user.resetPasswordExpire = undefined;
+        // SECURITY PATCH: Force logout semua sesi saat password direset
+        user.refreshToken = null;
         await user.save();
 
         res.json({ success: true, pesan: 'Password berhasil diubah. Silakan login kembali.' });

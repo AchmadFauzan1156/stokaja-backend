@@ -46,7 +46,7 @@ const transactionSchema = new mongoose.Schema({
     },
     statusPesanan: {
         type: String,
-        enum: ['pending', 'diproses', 'dikirim', 'selesai'],
+        enum: ['pending', 'diproses', 'dikirim', 'selesai', 'batal'],
         default: 'pending',
     },
     lokasiPengiriman: {
