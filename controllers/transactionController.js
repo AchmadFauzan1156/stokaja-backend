@@ -12,7 +12,8 @@ const checkoutKasir = async (req, res, next) => {
     session.startTransaction();
 
     try {
-        const { isiKeranjang, lokasiPengiriman, persentasePajak = 0, metodePembayaran = 'tunai', jumlahDibayar = 0 } = req.body;
+        const { isiKeranjang, lokasiPengiriman, metodePembayaran = 'tunai', jumlahDibayar = 0 } = req.body;
+        const persentasePajak = 0; // SECURITY PATCH: Hardcode 0% untuk mencegah eksploitasi dari frontend
         
         let totalHargaBarang = 0;
         let totalModalBarang = 0;
@@ -237,16 +238,29 @@ const ubahStatusPesanan = async (req, res, next) => {
         const transaksiId = req.params.id;
         const { statusBaru } = req.body;
         
+        // Cari transaksi sebelum diupdate untuk mengecek status lama
+        const transaksiLama = await Transaction.findById(transaksiId);
+        if (!transaksiLama) {
+            return res.status(404).json({ message: 'Transaksi tidak ditemukan' });
+        }
+
         const transaksiDiperbarui = await Transaction.findByIdAndUpdate(
             transaksiId,
             { statusPesanan: statusBaru },
             { returnDocument: 'after', runValidators: true }
         );
 
-        if (!transaksiDiperbarui) {
-            return res.status(404).json({ message: 'Transaksi tidak ditemukan' });
+        // LOGIKA RESTOCK (SECURITY PATCH): Jika status diubah menjadi 'batal', dan sebelumnya bukan 'batal'
+        if (statusBaru === 'batal' && transaksiLama.statusPesanan !== 'batal') {
+            for (let item of transaksiLama.keranjang) {
+                if (item.tipeItem === 'RawMaterial') {
+                    await RawMaterial.findByIdAndUpdate(item.produkId, { $inc: { stok: item.jumlahBeli } });
+                } else {
+                    await Product.findByIdAndUpdate(item.produkId, { $inc: { stok: item.jumlahBeli } });
+                }
+            }
         }
-        
+
         res.status(200).json({
             message: `Status pesanan berhasil diupdate menjadi ${statusBaru}`,
             transaksi: transaksiDiperbarui,
@@ -269,9 +283,11 @@ const lihatDaftarPesanan = async (req, res, next) => {
             aturanPencarian.statusPesanan = status;
         }
 
-        // Search by nomor resi
+        // Search by nomor resi dengan Escape Regex (Mencegah ReDoS)
         if (search) {
-            aturanPencarian.nomorResi = { $regex: search, $options: 'i' };
+            const escapeRegex = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const safeSearch = escapeRegex(search);
+            aturanPencarian.nomorResi = { $regex: safeSearch, $options: 'i' };
         }
 
         // Filter tanggal
