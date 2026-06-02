@@ -109,6 +109,11 @@ const tambahAlamat = async (req, res, next) => {
         const user = await User.findById(userId);
         if (!user) return res.status(404).json({ pesan: 'User tidak ditemukan' });
 
+        // SECURITY PATCH: Batasi maksimal 5 alamat untuk mencegah Document Bloat (DDoS level database)
+        if (user.alamat.length >= 5) {
+            return res.status(400).json({ pesan: 'Batas maksimum alamat tercapai (5 alamat). Hapus alamat lama untuk menambah yang baru.' });
+        }
+
         user.alamat.push({ label, alamatDetail, lat, lng });
         await user.save();
 

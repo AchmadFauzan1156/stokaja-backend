@@ -53,7 +53,7 @@ app.use(morgan('combined', {
 // --- RATE LIMITER ---
 const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 100,
+    max: 1000, // Diperlonggar untuk endpoint umum
     message: { message: "Terlalu banyak request dari IP ini, silakan coba lagi setelah 15 menit." },
     standardHeaders: true,
     legacyHeaders: false,

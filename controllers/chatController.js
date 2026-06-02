@@ -127,15 +127,27 @@ const markAsRead = async (req, res, next) => {
     try {
         const messageId = req.params.id;
 
+        const messageToCheck = await Message.findById(messageId);
+        if (!messageToCheck) {
+            return res.status(404).json({ pesan: 'Pesan tidak ditemukan' });
+        }
+
+        // SECURITY PATCH (IDOR): Hanya penerima sah (atau admin yang menerima pesan broadcast) yang boleh menandai dibaca
+        if (messageToCheck.penerima === null && req.user.role === 'pelanggan') {
+            // Pesan ditujukan untuk admin, pelanggan tidak boleh menandai read
+            return res.status(403).json({ pesan: 'Akses ditolak' });
+        }
+        
+        if (messageToCheck.penerima !== null && messageToCheck.penerima.toString() !== req.user.id) {
+            // Jika ada penerima spesifik, pastikan itu adalah user yang login
+            return res.status(403).json({ pesan: 'Akses ditolak' });
+        }
+
         const message = await Message.findByIdAndUpdate(
             messageId,
             { dibaca: true },
             { new: true }
         );
-
-        if (!message) {
-            return res.status(404).json({ pesan: 'Pesan tidak ditemukan' });
-        }
 
         res.status(200).json({
             pesan: 'Pesan ditandai sudah dibaca',

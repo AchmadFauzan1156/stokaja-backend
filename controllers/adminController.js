@@ -3,24 +3,37 @@ const User = require('../models/User');
 // Lihat semua user (tanpa password & refreshToken)
 const lihatSemuaUser = async (req, res, next) => {
     try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 20;
+        const skip = (page - 1) * limit;
+
         const { role, search } = req.query;
         let query = {};
 
         if (role) query.role = role;
         if (search) {
+            const escapeRegex = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const safeSearch = escapeRegex(search);
             query.$or = [
-                { namaLengkap: { $regex: search, $options: 'i' } },
-                { email: { $regex: search, $options: 'i' } }
+                { namaLengkap: { $regex: safeSearch, $options: 'i' } },
+                { email: { $regex: safeSearch, $options: 'i' } }
             ];
         }
 
         const users = await User.find(query)
             .select('-password -refreshToken')
-            .sort({ createdAt: -1 });
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit);
+
+        const totalData = await User.countDocuments(query);
 
         res.status(200).json({
             pesan: 'Berhasil memuat daftar user',
-            jumlahData: users.length,
+            total: totalData,
+            page,
+            limit,
+            totalPages: Math.ceil(totalData / limit),
             data: users
         });
     } catch (error) {
