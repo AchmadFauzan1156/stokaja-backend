@@ -108,6 +108,8 @@ const checkoutKasir = async (req, res, next) => {
 
         // Validasi Logika Bisnis: Cegah pembayaran kurang
         if (jumlahDibayar > 0 && jumlahDibayar < totalBayarLengkap) {
+            await session.abortTransaction();
+            session.endSession();
             return res.status(400).json({ pesan: `Uang tidak cukup! Total tagihan adalah Rp ${totalBayarLengkap}` });
         }
 
@@ -258,12 +260,22 @@ const ubahStatusPesanan = async (req, res, next) => {
 
         // LOGIKA RESTOCK (SECURITY PATCH): Jika status diubah menjadi 'batal', dan sebelumnya bukan 'batal'
         if (statusBaru === 'batal' && transaksiLama.statusPesanan !== 'batal') {
-            for (let item of transaksiLama.keranjang) {
-                if (item.tipeItem === 'RawMaterial') {
-                    await RawMaterial.findByIdAndUpdate(item.produkId, { $inc: { stok: item.jumlahBeli } });
-                } else {
-                    await Product.findByIdAndUpdate(item.produkId, { $inc: { stok: item.jumlahBeli } });
+            const session = await mongoose.startSession();
+            session.startTransaction();
+            try {
+                for (let item of transaksiLama.keranjang) {
+                    if (item.tipeItem === 'RawMaterial') {
+                        await RawMaterial.findByIdAndUpdate(item.produkId, { $inc: { stok: item.jumlahBeli } }, { session });
+                    } else {
+                        await Product.findByIdAndUpdate(item.produkId, { $inc: { stok: item.jumlahBeli } }, { session });
+                    }
                 }
+                await session.commitTransaction();
+            } catch (error) {
+                await session.abortTransaction();
+                throw error;
+            } finally {
+                session.endSession();
             }
         }
 
@@ -442,7 +454,7 @@ const generateStrukPDF = async (req, res, next) => {
         
         transaksi.keranjang.forEach(item => {
             const subtotal = item.jumlahBeli * item.hargaSatuan;
-            const namaItem = item.produkId.nama || item.produkId.namaBahan || 'Item';
+            const namaItem = item.produkId?.nama || item.produkId?.namaBahan || 'Item Dihapus';
             doc.fontSize(10).text(`${namaItem} x ${item.jumlahBeli} @ Rp ${item.hargaSatuan.toLocaleString()} = Rp ${subtotal.toLocaleString()}`);
         });
 

@@ -25,18 +25,25 @@ const getChatHistory = async (req, res, next) => {
                         { penerima: targetPelanggan }
                     ]
                 };
+            } else {
+                return res.status(400).json({ pesan: 'pelangganId harus disertakan untuk riwayat chat admin', data: [] });
             }
-            // Jika tidak ada targetPelanggan, mungkin fetch list contact yang pernah nge-chat (bisa ditambahkan nanti)
         }
+
+        const page = parseInt(req.query.page) || 1;
+        const limit = Math.min(parseInt(req.query.limit) || 50, 100);
+        const skip = (page - 1) * limit;
 
         const history = await Message.find(query)
             .populate('pengirim', 'namaLengkap role avatar')
             .populate('penerima', 'namaLengkap role avatar')
-            .sort({ createdAt: 1 }); // urut dari terlama ke terbaru (seperti chat asli)
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit);
 
         res.status(200).json({
             pesan: 'Berhasil memuat riwayat chat',
-            data: history
+            data: history.reverse()
         });
     } catch (error) {
         next(error);
