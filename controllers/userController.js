@@ -181,4 +181,72 @@ const hapusAlamat = async (req, res, next) => {
     }
 };
 
-module.exports = { lihatProfil, updateProfil, tambahAlamat, editAlamat, hapusAlamat };
+// === ADMIN ENDPOINTS ===
+const getAllUsers = async (req, res, next) => {
+    try {
+        const users = await User.find().select('-password -refreshToken').sort({ createdAt: -1 });
+        res.status(200).json({ pesan: 'Berhasil memuat daftar pengguna', data: users });
+    } catch (error) {
+        next(error);
+    }
+};
+
+const updateUserRole = async (req, res, next) => {
+    try {
+        const { role } = req.body;
+        if (!['pelanggan', 'kasir', 'admin'].includes(role)) {
+            return res.status(400).json({ pesan: 'Role tidak valid' });
+        }
+        const user = await User.findByIdAndUpdate(
+            req.params.id,
+            { role },
+            { returnDocument: 'after' }
+        ).select('-password -refreshToken');
+        
+        if (!user) return res.status(404).json({ pesan: 'User tidak ditemukan' });
+        res.status(200).json({ pesan: 'Role berhasil diperbarui', data: user });
+    } catch (error) {
+        next(error);
+    }
+};
+
+const createUser = async (req, res, next) => {
+    try {
+        const { namaLengkap, email, password, role } = req.body;
+        if (!namaLengkap || !email || !password) {
+            return res.status(400).json({ pesan: 'Nama, email, dan password wajib diisi' });
+        }
+        
+        const emailExist = await User.findOne({ email });
+        if (emailExist) {
+            return res.status(409).json({ pesan: 'Email sudah digunakan' });
+        }
+        
+        const salt = await bcrypt.genSalt(12);
+        const hashedPassword = await bcrypt.hash(password, salt);
+        
+        const newUser = new User({
+            namaLengkap,
+            email,
+            password: hashedPassword,
+            role: role || 'pelanggan'
+        });
+        
+        await newUser.save();
+        res.status(201).json({ pesan: 'User berhasil dibuat', data: newUser });
+    } catch (error) {
+        next(error);
+    }
+};
+
+const deleteUser = async (req, res, next) => {
+    try {
+        const user = await User.findByIdAndDelete(req.params.id);
+        if (!user) return res.status(404).json({ pesan: 'User tidak ditemukan' });
+        res.status(200).json({ pesan: 'User berhasil dihapus' });
+    } catch (error) {
+        next(error);
+    }
+};
+
+module.exports = { lihatProfil, updateProfil, tambahAlamat, editAlamat, hapusAlamat, getAllUsers, createUser, updateUserRole, deleteUser };
