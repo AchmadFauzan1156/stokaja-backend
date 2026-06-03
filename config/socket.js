@@ -4,8 +4,8 @@ const jwt = require("jsonwebtoken");
 const initSocket = (server) => {
     const io = new Server(server, {
         cors: {
-            origin: process.env.CORS_ORIGIN || "http://localhost:3000",
-            methods: ["GET", "POST"],
+            origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : "http://localhost:3000",
+            methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
             credentials: true
         }
     });

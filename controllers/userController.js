@@ -233,7 +233,11 @@ const createUser = async (req, res, next) => {
         });
         
         await newUser.save();
-        res.status(201).json({ pesan: 'User berhasil dibuat', data: newUser });
+        
+        const userObj = newUser.toObject();
+        delete userObj.password;
+        
+        res.status(201).json({ pesan: 'User berhasil dibuat', data: userObj });
     } catch (error) {
         next(error);
     }

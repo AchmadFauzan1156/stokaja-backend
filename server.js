@@ -81,7 +81,7 @@ const API_VERSION = '/api/v1';
 app.use(API_VERSION, authRoutes);
 app.use(API_VERSION, productRoutes);
 app.use(API_VERSION, transactionRoutes);
-app.use(API_VERSION, userRoutes);
+app.use(`${API_VERSION}/users`, userRoutes);
 app.use(API_VERSION, rawMaterialRoutes);
 app.use(API_VERSION, categoryRoutes);
 app.use(API_VERSION, paymentMethodRoutes);
