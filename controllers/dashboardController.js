@@ -23,18 +23,19 @@ const getDashboardStats = async (req, res, next) => {
             Product.countDocuments(),
             RawMaterial.countDocuments(),
             User.countDocuments(),
-            Transaction.find({ createdAt: { $gte: today, $lt: tomorrow } }),
+            Transaction.aggregate([
+                { $match: { createdAt: { $gte: today, $lt: tomorrow }, statusPesanan: 'selesai' } },
+                { $group: { _id: null, count: { $sum: 1 }, totalPendapatan: { $sum: "$totalHarga" }, totalKeuntungan: { $sum: "$marginKeuntungan" } } }
+            ]),
             Product.find({ $expr: { $lte: ['$stok', '$stokMinimum'] } }).select('nama stok stokMinimum satuan'),
             RawMaterial.find({ $expr: { $lte: ['$stok', '$stokMinimum'] } }).select('namaBahan stok stokMinimum satuan')
         ]);
 
-        // Hitung total pendapatan & keuntungan hari ini
-        let pendapatanHariIni = 0;
-        let keuntunganHariIni = 0;
-        transaksiHariIni.forEach(t => {
-            pendapatanHariIni += t.totalHarga;
-            keuntunganHariIni += (t.marginKeuntungan || 0);
-        });
+        // Ekstrak hasil agregasi
+        const statsTransaksi = transaksiHariIni[0] || { count: 0, totalPendapatan: 0, totalKeuntungan: 0 };
+        const jumlahTransaksiHariIni = statsTransaksi.count;
+        const pendapatanHariIni = statsTransaksi.totalPendapatan;
+        const keuntunganHariIni = statsTransaksi.totalKeuntungan;
 
         res.status(200).json({
             pesan: 'Dashboard stats berhasil dimuat',
@@ -42,7 +43,7 @@ const getDashboardStats = async (req, res, next) => {
                 totalProduk,
                 totalBahanBaku,
                 totalUser,
-                jumlahTransaksiHariIni: transaksiHariIni.length,
+                jumlahTransaksiHariIni,
                 pendapatanHariIni,
                 keuntunganHariIni,
                 produkStokMenipis,

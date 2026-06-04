@@ -84,34 +84,44 @@ const getChatContacts = async (req, res, next) => {
             role: 'pelanggan'
         }).select('namaLengkap email avatar');
 
-        // Untuk setiap pelanggan, ambil pesan terakhir dan jumlah belum dibaca
-        const contactsWithLastMessage = await Promise.all(
-            pelangganList.map(async (pelanggan) => {
-                const lastMessage = await Message.findOne({
-                    $or: [
-                        { pengirim: pelanggan._id },
-                        { penerima: pelanggan._id }
-                    ]
-                }).sort({ createdAt: -1 });
+        const pelangganIds = pelangganList.map(p => p._id);
 
-                const unreadCount = await Message.countDocuments({
-                    pengirim: pelanggan._id,
-                    dibaca: false
-                });
+        // Ambil jumlah unread secara massal
+        const unreadCounts = await Message.aggregate([
+            { $match: { pengirim: { $in: pelangganIds }, dibaca: false } },
+            { $group: { _id: '$pengirim', count: { $sum: 1 } } }
+        ]);
+        const unreadMap = {};
+        unreadCounts.forEach(u => unreadMap[u._id.toString()] = u.count);
 
-                return {
-                    pelanggan: {
-                        _id: pelanggan._id,
-                        namaLengkap: pelanggan.namaLengkap,
-                        email: pelanggan.email,
-                        avatar: pelanggan.avatar
-                    },
-                    pesanTerakhir: lastMessage ? lastMessage.isiPesan : null,
-                    waktuTerakhir: lastMessage ? lastMessage.createdAt : null,
-                    belumDibaca: unreadCount
-                };
-            })
-        );
+        // Ambil pesan terakhir secara massal
+        const lastMessages = await Message.aggregate([
+            { $match: { $or: [{ pengirim: { $in: pelangganIds } }, { penerima: { $in: pelangganIds } }] } },
+            { $sort: { createdAt: -1 } },
+            { $group: { 
+                _id: { $cond: [{ $in: ['$pengirim', pelangganIds] }, '$pengirim', '$penerima'] }, 
+                lastMessage: { $first: '$$ROOT' } 
+            }}
+        ]);
+        const lastMsgMap = {};
+        lastMessages.forEach(m => lastMsgMap[m._id.toString()] = m.lastMessage);
+
+        const contactsWithLastMessage = pelangganList.map((pelanggan) => {
+            const lastMessage = lastMsgMap[pelanggan._id.toString()];
+            const unreadCount = unreadMap[pelanggan._id.toString()] || 0;
+
+            return {
+                pelanggan: {
+                    _id: pelanggan._id,
+                    namaLengkap: pelanggan.namaLengkap,
+                    email: pelanggan.email,
+                    avatar: pelanggan.avatar
+                },
+                pesanTerakhir: lastMessage ? lastMessage.isiPesan : null,
+                waktuTerakhir: lastMessage ? lastMessage.createdAt : null,
+                belumDibaca: unreadCount
+            };
+        });
 
         // Urutkan berdasarkan pesan terakhir (terbaru di atas)
         contactsWithLastMessage.sort((a, b) => {

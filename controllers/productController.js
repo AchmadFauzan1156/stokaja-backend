@@ -18,8 +18,10 @@ const tambahProduk = async (req, res, next) => {
         
         const produkData = {
             ...req.body,
+            kategori: req.body.kategoriId || req.body.kategori,
             gambar: urlGambar
         };
+        delete produkData.kategoriId;
         
         const produk = new Product(produkData);
         await produk.save();
@@ -99,6 +101,10 @@ const editProduk = async (req, res, next) => {
         }
 
         let dataBaru = { ...req.body };
+        if (dataBaru.kategoriId) {
+            dataBaru.kategori = dataBaru.kategoriId;
+            delete dataBaru.kategoriId;
+        }
 
         if (req.file) {
             if (produkLama.gambar) {

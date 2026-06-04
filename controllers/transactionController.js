@@ -214,26 +214,23 @@ const laporanKeuntungan = async (req, res, next) => {
             };
         }
 
-        const semuaTransaksi = await Transaction.find(query);
-        if (semuaTransaksi.length === 0) {
-            return res.status(200).json({ pesan: 'Belum ada transaksi', totalPendapatan: 0, totalKeuntunganBersih: 0 });
-        }
+        // Hanya hitung transaksi yang selesai
+        query.statusPesanan = 'selesai';
 
-        let totalPendapatan = 0;
-        let totalKeuntunganBersih = 0;
+        const [stats] = await Transaction.aggregate([
+            { $match: query },
+            { $group: { _id: null, count: { $sum: 1 }, totalPendapatan: { $sum: "$totalHarga" }, totalKeuntungan: { $sum: "$marginKeuntungan" } } }
+        ]);
 
-        semuaTransaksi.forEach(t => {
-            totalPendapatan += t.totalHarga;
-            totalKeuntunganBersih += (t.marginKeuntungan || 0);
-        });
+        const rincian = await Transaction.find(query).sort({ createdAt: -1 }).limit(100).lean();
 
         res.status(200).json({
             pesan: 'Laporan berhasil dibuat',
             periode: startDate && endDate ? `${startDate} s/d ${endDate}` : 'Semua Waktu',
-            jumlahTransaksi: semuaTransaksi.length,
-            totalPendapatan: totalPendapatan,
-            totalKeuntunganBersih: totalKeuntunganBersih,
-            rincian: semuaTransaksi
+            jumlahTransaksi: stats ? stats.count : 0,
+            totalPendapatan: stats ? stats.totalPendapatan : 0,
+            totalKeuntunganBersih: stats ? stats.totalKeuntungan : 0,
+            rincian: rincian
         });
 
     } catch (error) {
@@ -258,20 +255,26 @@ const ubahStatusPesanan = async (req, res, next) => {
             const session = await mongoose.startSession();
             session.startTransaction();
             try {
-                // Kembalikan stok
-                for (let item of transaksiLama.keranjang) {
+                // Ubah status pesanan secara ATOMIK untuk menghindari race condition
+                transaksiDiperbarui = await Transaction.findOneAndUpdate(
+                    { _id: transaksiId, statusPesanan: { $ne: 'batal' } },
+                    { statusPesanan: statusBaru },
+                    { returnDocument: 'after', runValidators: true, session }
+                );
+
+                if (!transaksiDiperbarui) {
+                    throw new Error('Pesanan sudah dibatalkan sebelumnya atau tidak ditemukan');
+                }
+
+                // Kembalikan stok jika berhasil mengubah status
+                for (let item of transaksiDiperbarui.keranjang) {
                     if (item.tipeItem === 'RawMaterial') {
                         await RawMaterial.findByIdAndUpdate(item.produkId, { $inc: { stok: item.jumlahBeli } }, { session });
                     } else {
                         await Product.findByIdAndUpdate(item.produkId, { $inc: { stok: item.jumlahBeli } }, { session });
                     }
                 }
-                // Ubah status pesanan di dalam sesi yang sama
-                transaksiDiperbarui = await Transaction.findByIdAndUpdate(
-                    transaksiId,
-                    { statusPesanan: statusBaru },
-                    { returnDocument: 'after', runValidators: true, session }
-                );
+
                 await session.commitTransaction();
             } catch (error) {
                 await session.abortTransaction();
@@ -383,8 +386,6 @@ const exportLaporanExcel = async (req, res, next) => {
             };
         }
 
-        const semuaTransaksi = await Transaction.find(query).sort({ createdAt: -1 });
-        
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Laporan Penjualan');
 
@@ -398,17 +399,21 @@ const exportLaporanExcel = async (req, res, next) => {
             { header: 'Status', key: 'status', width: 15 },
         ];
 
-        semuaTransaksi.forEach((t, index) => {
+        // Gunakan cursor agar RAM tidak overload (solusi Memory Leak)
+        const cursor = Transaction.find(query).sort({ createdAt: -1 }).cursor();
+        
+        let index = 1;
+        for (let doc = await cursor.next(); doc != null; doc = await cursor.next()) {
             worksheet.addRow({
-                no: index + 1,
-                tanggal: t.createdAt.toLocaleString('id-ID'),
-                resi: t.nomorResi,
-                pajak: t.pajak || 0,
-                total: t.totalHarga,
-                untung: t.marginKeuntungan || 0,
-                status: t.statusPesanan
-            });
-        });
+                no: index++,
+                tanggal: doc.createdAt.toLocaleString('id-ID'),
+                resi: doc.nomorResi,
+                pajak: doc.pajak || 0,
+                total: doc.totalHarga,
+                untung: doc.marginKeuntungan || 0,
+                status: doc.statusPesanan
+            }).commit(); // flush baris ke memori atau stream
+        }
 
         worksheet.getRow(1).font = { bold: true };
 
