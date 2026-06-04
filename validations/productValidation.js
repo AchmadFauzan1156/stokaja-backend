@@ -10,6 +10,9 @@ const aturanValidasiProduk = [
         .isNumeric().withMessage('Harga harus berupa angka')
         .isInt({ min: 100 }).withMessage('Harga tidak masuk akal (minimal Rp 100)'),
 
+    body('kategoriId').notEmpty().withMessage('Kategori produk harus diisi'),
+    body('satuan').notEmpty().withMessage('Satuan produk harus diisi'),
+
     body('stok')
         .notEmpty().withMessage('Stok harus diisi')
         .isInt({ min: 0 }).withMessage('Stok tidak boleh minus')

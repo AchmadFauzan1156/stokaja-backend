@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middlewares/auth');
-const authorizeRoles = require('../middlewares/authorizeRoles');
+const { authorizeRoles } = require('../middlewares/roleMiddleware');
 const upload = require('../middlewares/upload');
 const { lihatProfil, updateProfil, tambahAlamat, editAlamat, hapusAlamat, getAllUsers, createUser, updateUserRole, deleteUser } = require('../controllers/userController');
 

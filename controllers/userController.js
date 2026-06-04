@@ -194,6 +194,10 @@ const getAllUsers = async (req, res, next) => {
 const updateUserRole = async (req, res, next) => {
     try {
         const { role } = req.body;
+
+        if (req.params.id === req.user.id) {
+            return res.status(403).json({ message: 'Anda tidak dapat mengubah role akun Anda sendiri.' });
+        }
         if (!['pelanggan', 'kasir', 'admin'].includes(role)) {
             return res.status(400).json({ pesan: 'Role tidak valid' });
         }
@@ -245,8 +249,12 @@ const createUser = async (req, res, next) => {
 
 const deleteUser = async (req, res, next) => {
     try {
-        const user = await User.findByIdAndDelete(req.params.id);
-        if (!user) return res.status(404).json({ pesan: 'User tidak ditemukan' });
+        if (req.params.id === req.user.id) {
+            return res.status(403).json({ message: 'Anda tidak dapat menghapus akun Anda sendiri.' });
+        }
+        
+        const deletedUser = await User.findByIdAndDelete(req.params.id);
+        if (!deletedUser) return res.status(404).json({ pesan: 'User tidak ditemukan' });
         res.status(200).json({ pesan: 'User berhasil dihapus' });
     } catch (error) {
         next(error);

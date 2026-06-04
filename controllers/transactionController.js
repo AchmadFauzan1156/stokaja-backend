@@ -252,17 +252,13 @@ const ubahStatusPesanan = async (req, res, next) => {
             return res.status(404).json({ message: 'Transaksi tidak ditemukan' });
         }
 
-        const transaksiDiperbarui = await Transaction.findByIdAndUpdate(
-            transaksiId,
-            { statusPesanan: statusBaru },
-            { returnDocument: 'after', runValidators: true }
-        );
+        let transaksiDiperbarui;
 
-        // LOGIKA RESTOCK (SECURITY PATCH): Jika status diubah menjadi 'batal', dan sebelumnya bukan 'batal'
         if (statusBaru === 'batal' && transaksiLama.statusPesanan !== 'batal') {
             const session = await mongoose.startSession();
             session.startTransaction();
             try {
+                // Kembalikan stok
                 for (let item of transaksiLama.keranjang) {
                     if (item.tipeItem === 'RawMaterial') {
                         await RawMaterial.findByIdAndUpdate(item.produkId, { $inc: { stok: item.jumlahBeli } }, { session });
@@ -270,6 +266,12 @@ const ubahStatusPesanan = async (req, res, next) => {
                         await Product.findByIdAndUpdate(item.produkId, { $inc: { stok: item.jumlahBeli } }, { session });
                     }
                 }
+                // Ubah status pesanan di dalam sesi yang sama
+                transaksiDiperbarui = await Transaction.findByIdAndUpdate(
+                    transaksiId,
+                    { statusPesanan: statusBaru },
+                    { returnDocument: 'after', runValidators: true, session }
+                );
                 await session.commitTransaction();
             } catch (error) {
                 await session.abortTransaction();
@@ -277,6 +279,13 @@ const ubahStatusPesanan = async (req, res, next) => {
             } finally {
                 session.endSession();
             }
+        } else {
+            // Pembaruan normal jika bukan pembatalan
+            transaksiDiperbarui = await Transaction.findByIdAndUpdate(
+                transaksiId,
+                { statusPesanan: statusBaru },
+                { returnDocument: 'after', runValidators: true }
+            );
         }
 
         res.status(200).json({
@@ -407,7 +416,7 @@ const exportLaporanExcel = async (req, res, next) => {
         res.setHeader('Content-Disposition', `attachment; filename=Laporan_StokAja_${Date.now()}.xlsx`);
 
         await workbook.xlsx.write(res);
-        res.status(200).end();
+        // Hapus res.status(200).end() karena xlsx.write(res) sudah mengelola stream response
 
     } catch (error) {
         next(error);
