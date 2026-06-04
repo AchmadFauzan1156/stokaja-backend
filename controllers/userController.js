@@ -15,9 +15,7 @@ const getPublicId = (url) => {
 
 const lihatProfil = async (req, res, next) => {
     try {
-        const userId = req.user.id;
-
-        const profil = await User.findById(userId).select('-password -refreshToken');
+        const profil = await User.findById(req.user.id).select('-password -refreshToken -resetPasswordToken -resetPasswordExpire');
         
         if (!profil) return res.status(404).json({ pesan: 'Profil tidak ditemukan' });
 
@@ -116,6 +114,13 @@ const tambahAlamat = async (req, res, next) => {
             return res.status(400).json({ pesan: 'Batas maksimum alamat tercapai (5 alamat). Hapus alamat lama untuk menambah yang baru.' });
         }
 
+        if (lat !== undefined && (lat < -90 || lat > 90)) {
+            return res.status(400).json({ pesan: 'Latitude tidak valid (harus antara -90 dan 90)' });
+        }
+        if (lng !== undefined && (lng < -180 || lng > 180)) {
+            return res.status(400).json({ pesan: 'Longitude tidak valid (harus antara -180 dan 180)' });
+        }
+
         user.alamat.push({ label, alamatDetail, lat, lng });
         await user.save();
 
@@ -140,6 +145,13 @@ const editAlamat = async (req, res, next) => {
 
         const alamat = user.alamat.id(alamatId);
         if (!alamat) return res.status(404).json({ pesan: 'Alamat tidak ditemukan' });
+
+        if (lat !== undefined && (lat < -90 || lat > 90)) {
+            return res.status(400).json({ pesan: 'Latitude tidak valid (harus antara -90 dan 90)' });
+        }
+        if (lng !== undefined && (lng < -180 || lng > 180)) {
+            return res.status(400).json({ pesan: 'Longitude tidak valid (harus antara -180 dan 180)' });
+        }
 
         if (label) alamat.label = label;
         if (alamatDetail) alamat.alamatDetail = alamatDetail;
@@ -204,7 +216,7 @@ const updateUserRole = async (req, res, next) => {
         const user = await User.findByIdAndUpdate(
             req.params.id,
             { role },
-            { returnDocument: 'after' }
+            { returnDocument: 'after', runValidators: true }
         ).select('-password -refreshToken');
         
         if (!user) return res.status(404).json({ pesan: 'User tidak ditemukan' });

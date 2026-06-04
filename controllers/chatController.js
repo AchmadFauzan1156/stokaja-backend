@@ -19,6 +19,10 @@ const getChatHistory = async (req, res, next) => {
             // Jika admin/kasir, bisa ambil chat dengan pelanggan spesifik jika userId dikirim via query
             const targetPelanggan = req.query.pelangganId;
             if (targetPelanggan) {
+                const mongoose = require('mongoose');
+                if (!mongoose.Types.ObjectId.isValid(targetPelanggan)) {
+                    return res.status(400).json({ pesan: 'Format pelangganId tidak valid', data: [] });
+                }
                 query = {
                     $or: [
                         { pengirim: targetPelanggan },

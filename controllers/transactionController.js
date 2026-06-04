@@ -23,6 +23,10 @@ const checkoutKasir = async (req, res, next) => {
         for (let item of isiKeranjang) {
             const tipe = item.tipe || 'produk'; // Default: produk
             
+            if (item.jumlahBeli <= 0) {
+                throw new Error('Gagal: Kuantitas pembelian harus lebih besar dari 0.');
+            }
+
             if (tipe === 'bahanBaku') {
                 // --- BAHAN BAKU ---
                 const bahan = await RawMaterial.findOneAndUpdate(
@@ -106,8 +110,8 @@ const checkoutKasir = async (req, res, next) => {
         const totalBayarLengkap = totalHargaBarang + nominalPajak;
         const labaBersih = totalHargaBarang - totalModalBarang;
 
-        // Validasi Logika Bisnis: Cegah pembayaran kurang
-        if (jumlahDibayar > 0 && jumlahDibayar < totalBayarLengkap) {
+        // Validasi Logika Bisnis: Cegah pembayaran kurang dan minus
+        if (jumlahDibayar !== undefined && jumlahDibayar < totalBayarLengkap) {
             await session.abortTransaction();
             session.endSession();
             return res.status(400).json({ pesan: `Uang tidak cukup! Total tagihan adalah Rp ${totalBayarLengkap}` });
@@ -294,6 +298,34 @@ const ubahStatusPesanan = async (req, res, next) => {
         res.status(200).json({
             message: `Status pesanan berhasil diupdate menjadi ${statusBaru}`,
             transaksi: transaksiDiperbarui,
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+const lihatDetailPesanan = async (req, res, next) => {
+    try {
+        const transaksi = await Transaction.findById(req.params.id)
+            .populate('keranjang.produkId', 'nama namaBahan gambar')
+            .populate('pelangganId', 'namaLengkap email');
+        
+        if (!transaksi) {
+            return res.status(404).json({ message: 'Transaksi tidak ditemukan' });
+        }
+
+        // --- SECURITY PATCH: Cegah Pelanggan mengintip pesanan orang lain ---
+        if (req.user.role === 'pelanggan') {
+            if (!transaksi.pelangganId || transaksi.pelangganId._id.toString() !== req.user.id) {
+                return res.status(403).json({
+                    message: 'Akses ditolak! Anda tidak berhak melihat pesanan ini.'
+                });
+            }
+        }
+
+        res.status(200).json({
+            pesan: 'Berhasil memuat detail pesanan',
+            data: transaksi
         });
     } catch (error) {
         next(error);
@@ -556,5 +588,6 @@ module.exports = {
     lihatDaftarPesanan,
     exportLaporanExcel,
     generateStrukPDF,
-    laporanPerProduk
+    laporanPerProduk,
+    lihatDetailPesanan
 };

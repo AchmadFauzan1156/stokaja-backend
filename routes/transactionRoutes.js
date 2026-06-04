@@ -12,7 +12,8 @@ const {
     lihatDaftarPesanan,
     exportLaporanExcel,
     generateStrukPDF,
-    laporanPerProduk
+    laporanPerProduk,
+    lihatDetailPesanan
 } = require('../controllers/transactionController');
 
 const { validasiCheckout } = require('../validations/transactionValidation');
@@ -35,6 +36,7 @@ router.get('/laporan/excel', auth, authorizeRoles('admin'), exportLaporanExcel);
 
 // Kasir & Admin boleh lihat semua daftar pesanan toko
 router.get('/transaksi', auth, authorizeRoles('admin', 'kasir'), lihatDaftarPesanan);
+router.get('/transaksi/:id', auth, authorizeRoles('admin', 'kasir', 'pelanggan'), lihatDetailPesanan);
 
 // HANYA Kasir & Admin yang boleh mengubah status (pelanggan dilarang)
 router.patch('/transaksi/:id/status', auth, authorizeRoles('admin', 'kasir'), ubahStatusPesanan);

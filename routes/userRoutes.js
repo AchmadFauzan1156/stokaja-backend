@@ -14,10 +14,4 @@ router.post('/profil/alamat', auth, tambahAlamat);
 router.put('/profil/alamat/:alamatId', auth, editAlamat);
 router.delete('/profil/alamat/:alamatId', auth, hapusAlamat);
 
-// CRUD Admin (Hanya untuk Admin)
-router.get('/', auth, authorizeRoles('admin'), getAllUsers);
-router.post('/', auth, authorizeRoles('admin'), createUser);
-router.put('/:id/role', auth, authorizeRoles('admin'), updateUserRole);
-router.delete('/:id', auth, authorizeRoles('admin'), deleteUser);
-
 module.exports = router;

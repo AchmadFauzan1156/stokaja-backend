@@ -22,6 +22,13 @@ const registerUser = async (req, res, next) => {
     try {
         const { email, password, namaLengkap } = req.body;
 
+        if (typeof email !== 'string' || typeof password !== 'string' || typeof namaLengkap !== 'string') {
+            return res.status(400).json({ success: false, pesan: 'Format input tidak valid' });
+        }
+        if (password.length < 6) {
+            return res.status(400).json({ success: false, pesan: 'Password minimal 6 karakter' });
+        }
+
         const existing = await User.findOne({ email });
         if (existing) {
             return res.status(409).json({ success: false, pesan: 'Email sudah terdaftar' });
@@ -52,6 +59,10 @@ const loginUser = async (req, res, next) => {
     try {
         const { email, password } = req.body;
         
+        if (typeof email !== 'string' || typeof password !== 'string') {
+            return res.status(400).json({ success: false, pesan: 'Format email atau password tidak valid' });
+        }
+
         // Cari user berdasarkan email
         const user = await User.findOne({ email });
 

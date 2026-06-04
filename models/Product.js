@@ -18,10 +18,12 @@ const productSchema = new mongoose.Schema({
     harga: {
         type: Number,
         required: true,
+        min: 0
     },
     stok: {
         type: Number,
         default: 0,
+        min: 0
     },
     stokMinimum: {
         type: Number,
@@ -34,6 +36,7 @@ const productSchema = new mongoose.Schema({
     hargaModal: {
         type: Number,
         default: 0,
+        min: 0
     },
     gambar: {
         type: String,

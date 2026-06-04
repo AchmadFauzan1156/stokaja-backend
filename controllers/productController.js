@@ -44,9 +44,13 @@ const lihatProduk = async (req, res, next) => {
 
         // Filter berdasarkan search dan kategori
         let filter = {};
-        if (req.query.search) {
+        const search = req.query.search;
+        if (search) {
+            if (search.length > 100) {
+                return res.status(400).json({ pesan: 'Kata kunci pencarian terlalu panjang (maksimal 100 karakter).' });
+            }
             const escapeRegex = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const safeSearch = escapeRegex(req.query.search);
+            const safeSearch = escapeRegex(search);
             filter.nama = { $regex: safeSearch, $options: 'i' };
         }
         if (req.query.kategori) {

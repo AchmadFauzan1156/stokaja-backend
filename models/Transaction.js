@@ -16,8 +16,8 @@ const transactionSchema = new mongoose.Schema({
     keranjang: [{
         produkId: { type: mongoose.Schema.Types.ObjectId, required: true, refPath: 'keranjang.tipeItem' },
         tipeItem: { type: String, enum: ['Product', 'RawMaterial'], default: 'Product' },
-        jumlahBeli: { type: Number, required: true },
-        hargaSatuan: { type: Number },
+        jumlahBeli: { type: Number, required: true, min: 1 },
+        hargaSatuan: { type: Number, min: 0 },
         catatan: { type: String, default: '' }
     }],
     metodePembayaran: {
@@ -26,7 +26,8 @@ const transactionSchema = new mongoose.Schema({
     },
     jumlahDibayar: {
         type: Number,
-        default: 0
+        default: 0,
+        min: 0
     },
     kembalian: {
         type: Number,
@@ -38,7 +39,8 @@ const transactionSchema = new mongoose.Schema({
     },
     totalHarga: {
         type: Number,
-        required: true
+        required: true,
+        min: 0
     },
     marginKeuntungan: {
         type: Number,
