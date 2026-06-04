@@ -197,6 +197,10 @@ const resetPassword = async (req, res, next) => {
             return res.status(400).json({ success: false, pesan: 'Token reset password tidak valid atau sudah kadaluarsa' });
         }
 
+        if (typeof req.body.password !== 'string' || req.body.password.length < 6) {
+            return res.status(400).json({ success: false, pesan: 'Password harus berupa teks minimal 6 karakter' });
+        }
+
         // Set password baru
         user.password = await bcrypt.hash(req.body.password, 12);
         user.resetPasswordToken = undefined;

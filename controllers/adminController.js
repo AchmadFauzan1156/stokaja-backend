@@ -13,6 +13,9 @@ const lihatSemuaUser = async (req, res, next) => {
 
         if (role) query.role = role;
         if (search) {
+            if (search.length > 100) {
+                return res.status(400).json({ pesan: 'Kata kunci pencarian maksimal 100 karakter' });
+            }
             const escapeRegex = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             const safeSearch = escapeRegex(search);
             query.$or = [

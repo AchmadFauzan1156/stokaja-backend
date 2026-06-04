@@ -348,6 +348,9 @@ const lihatDaftarPesanan = async (req, res, next) => {
 
         // Search by nomor resi dengan Escape Regex (Mencegah ReDoS)
         if (search) {
+            if (search.length > 100) {
+                return res.status(400).json({ pesan: 'Kata kunci pencarian maksimal 100 karakter' });
+            }
             const escapeRegex = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             const safeSearch = escapeRegex(search);
             aturanPencarian.nomorResi = { $regex: safeSearch, $options: 'i' };
