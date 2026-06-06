@@ -54,6 +54,9 @@ const updateProfil = async (req, res, next) => {
 
         // Handle password update if requested
         if (req.body.passwordBaru) {
+            if (typeof req.body.passwordBaru !== 'string' || req.body.passwordBaru.length < 8) {
+                return res.status(400).json({ pesan: 'Password baru minimal 8 karakter!' });
+            }
             if (!req.body.passwordLama) {
                 return res.status(400).json({ pesan: 'Password lama wajib diisi untuk mengganti password baru!' });
             }
@@ -114,11 +117,11 @@ const tambahAlamat = async (req, res, next) => {
             return res.status(400).json({ pesan: 'Batas maksimum alamat tercapai (5 alamat). Hapus alamat lama untuk menambah yang baru.' });
         }
 
-        if (lat !== undefined && (lat < -90 || lat > 90)) {
-            return res.status(400).json({ pesan: 'Latitude tidak valid (harus antara -90 dan 90)' });
+        if (lat !== undefined && (typeof lat !== 'number' || lat < -90 || lat > 90)) {
+            return res.status(400).json({ pesan: 'Latitude tidak valid (harus angka antara -90 dan 90)' });
         }
-        if (lng !== undefined && (lng < -180 || lng > 180)) {
-            return res.status(400).json({ pesan: 'Longitude tidak valid (harus antara -180 dan 180)' });
+        if (lng !== undefined && (typeof lng !== 'number' || lng < -180 || lng > 180)) {
+            return res.status(400).json({ pesan: 'Longitude tidak valid (harus angka antara -180 dan 180)' });
         }
 
         user.alamat.push({ label, alamatDetail, lat, lng });
@@ -146,11 +149,11 @@ const editAlamat = async (req, res, next) => {
         const alamat = user.alamat.id(alamatId);
         if (!alamat) return res.status(404).json({ pesan: 'Alamat tidak ditemukan' });
 
-        if (lat !== undefined && (lat < -90 || lat > 90)) {
-            return res.status(400).json({ pesan: 'Latitude tidak valid (harus antara -90 dan 90)' });
+        if (lat !== undefined && (typeof lat !== 'number' || lat < -90 || lat > 90)) {
+            return res.status(400).json({ pesan: 'Latitude tidak valid (harus angka antara -90 dan 90)' });
         }
-        if (lng !== undefined && (lng < -180 || lng > 180)) {
-            return res.status(400).json({ pesan: 'Longitude tidak valid (harus antara -180 dan 180)' });
+        if (lng !== undefined && (typeof lng !== 'number' || lng < -180 || lng > 180)) {
+            return res.status(400).json({ pesan: 'Longitude tidak valid (harus angka antara -180 dan 180)' });
         }
 
         if (label) alamat.label = label;

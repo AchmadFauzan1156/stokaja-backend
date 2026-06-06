@@ -10,6 +10,9 @@ const verifikasiToken = (req, res, next) => {
     }
 
     try {
+        if (!token.startsWith('Bearer ')) {
+            return res.status(401).json({ message: 'Format token tidak valid. Gunakan format: Bearer <token>' });
+        }
         const tokenAsli = token.split(' ')[1];
 
         const dataUser = jwt.verify(tokenAsli, process.env.JWT_SECRET);

@@ -3,7 +3,8 @@ const Category = require('../models/Category');
 // Tambah kategori baru
 const tambahKategori = async (req, res, next) => {
     try {
-        const kategori = new Category(req.body);
+        const { nama, deskripsi, urutan } = req.body;
+        const kategori = new Category({ nama, deskripsi, urutan });
         await kategori.save();
         res.status(201).json({ pesan: 'Kategori berhasil ditambahkan', data: kategori });
     } catch (error) {
@@ -27,9 +28,10 @@ const lihatKategori = async (req, res, next) => {
 // Update kategori
 const updateKategori = async (req, res, next) => {
     try {
+        const { nama, deskripsi, urutan } = req.body;
         const kategori = await Category.findByIdAndUpdate(
             req.params.id,
-            req.body,
+            { nama, deskripsi, urutan },
             { new: true, runValidators: true }
         );
         if (!kategori) return res.status(404).json({ pesan: 'Kategori tidak ditemukan' });

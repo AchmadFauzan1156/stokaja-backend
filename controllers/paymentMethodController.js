@@ -2,7 +2,8 @@ const PaymentMethod = require('../models/PaymentMethod');
 
 const tambahMetode = async (req, res, next) => {
     try {
-        const metode = new PaymentMethod(req.body);
+        const { nama, aktif } = req.body;
+        const metode = new PaymentMethod({ nama, aktif });
         await metode.save();
         res.status(201).json({ pesan: 'Metode pembayaran berhasil ditambahkan', data: metode });
     } catch (error) {
@@ -24,9 +25,10 @@ const lihatMetode = async (req, res, next) => {
 
 const updateMetode = async (req, res, next) => {
     try {
+        const { nama, aktif } = req.body;
         const metode = await PaymentMethod.findByIdAndUpdate(
             req.params.id,
-            req.body,
+            { nama, aktif },
             { new: true, runValidators: true }
         );
         if (!metode) return res.status(404).json({ pesan: 'Metode pembayaran tidak ditemukan' });

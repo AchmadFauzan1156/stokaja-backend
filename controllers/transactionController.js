@@ -255,6 +255,11 @@ const ubahStatusPesanan = async (req, res, next) => {
 
         let transaksiDiperbarui;
 
+        // SECURITY PATCH: Cegah Un-cancel yang bisa mengeksploitasi stok
+        if (transaksiLama.statusPesanan === 'batal' && statusBaru !== 'batal') {
+            return res.status(400).json({ message: 'Pesanan yang sudah dibatalkan tidak dapat diaktifkan kembali' });
+        }
+
         if (statusBaru === 'batal' && transaksiLama.statusPesanan !== 'batal') {
             const session = await mongoose.startSession();
             session.startTransaction();
@@ -348,6 +353,9 @@ const lihatDaftarPesanan = async (req, res, next) => {
 
         // Search by nomor resi dengan Escape Regex (Mencegah ReDoS)
         if (search) {
+            if (typeof search !== 'string') {
+                return res.status(400).json({ pesan: 'Format pencarian tidak valid.' });
+            }
             if (search.length > 100) {
                 return res.status(400).json({ pesan: 'Kata kunci pencarian maksimal 100 karakter' });
             }

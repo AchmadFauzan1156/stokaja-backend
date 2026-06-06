@@ -13,6 +13,9 @@ const lihatSemuaUser = async (req, res, next) => {
 
         if (role) query.role = role;
         if (search) {
+            if (typeof search !== 'string') {
+                return res.status(400).json({ pesan: 'Format pencarian tidak valid.' });
+            }
             if (search.length > 100) {
                 return res.status(400).json({ pesan: 'Kata kunci pencarian maksimal 100 karakter' });
             }

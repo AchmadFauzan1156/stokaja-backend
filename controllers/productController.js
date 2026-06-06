@@ -46,6 +46,9 @@ const lihatProduk = async (req, res, next) => {
         let filter = {};
         const search = req.query.search;
         if (search) {
+            if (typeof search !== 'string') {
+                return res.status(400).json({ pesan: 'Format pencarian tidak valid.' });
+            }
             if (search.length > 100) {
                 return res.status(400).json({ pesan: 'Kata kunci pencarian terlalu panjang (maksimal 100 karakter).' });
             }
@@ -114,7 +117,11 @@ const editProduk = async (req, res, next) => {
             if (produkLama.gambar) {
                 const publicId = getPublicId(produkLama.gambar);
                 if (publicId) {
-                    await cloudinary.uploader.destroy(publicId);
+                    try {
+                        await cloudinary.uploader.destroy(publicId);
+                    } catch (err) {
+                        console.error('Gagal menghapus gambar lama produk:', err.message);
+                    }
                 }
             }
             dataBaru.gambar = req.file.path;

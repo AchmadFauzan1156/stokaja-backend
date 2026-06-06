@@ -15,7 +15,8 @@ const getPublicId = (url) => {
 // Create: Tambah bahan baku baru (dengan upload gambar)
 const tambahBahanBaku = async (req, res, next) => {
     try {
-        const data = { ...req.body };
+        const { namaBahan, stok, satuan, hargaModal, hargaJual, stokMinimum } = req.body;
+        const data = { namaBahan, stok, satuan, hargaModal, hargaJual, stokMinimum };
         if (req.file) {
             data.gambar = req.file.path;
         }
@@ -40,7 +41,8 @@ const lihatBahanBaku = async (req, res, next) => {
 // Update: Edit bahan atau tambah stok (Restock) — dengan upload gambar
 const updateBahanBaku = async (req, res, next) => {
     try {
-        const data = { ...req.body };
+        const { namaBahan, stok, satuan, hargaModal, hargaJual, stokMinimum } = req.body;
+        const data = { namaBahan, stok, satuan, hargaModal, hargaJual, stokMinimum };
 
         // Jika ada gambar baru, hapus gambar lama
         if (req.file) {
@@ -48,7 +50,11 @@ const updateBahanBaku = async (req, res, next) => {
             if (bahanLama && bahanLama.gambar) {
                 const publicId = getPublicId(bahanLama.gambar);
                 if (publicId) {
-                    await cloudinary.uploader.destroy(publicId);
+                    try {
+                        await cloudinary.uploader.destroy(publicId);
+                    } catch (err) {
+                        console.error('Failed to delete old image from Cloudinary:', err.message);
+                    }
                 }
             }
             data.gambar = req.file.path;
