@@ -10,8 +10,8 @@ const {
     hapusBahanBaku
 } = require('../controllers/rawMaterialController');
 
-// GET bisa diakses oleh admin DAN kasir (kasir perlu lihat bahan baku di POS)
-router.get('/bahan-baku', auth, authorizeRoles('admin', 'kasir'), lihatBahanBaku);
+// GET bisa diakses oleh semua role (termasuk pelanggan) agar bisa dibeli
+router.get('/bahan-baku', auth, lihatBahanBaku);
 
 // CUD hanya admin
 router.post('/bahan-baku', auth, authorizeRoles('admin'), upload.single('gambar'), tambahBahanBaku);
