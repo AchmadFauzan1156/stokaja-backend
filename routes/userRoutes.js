@@ -14,4 +14,10 @@ router.post('/profil/alamat', auth, tambahAlamat);
 router.put('/profil/alamat/:alamatId', auth, editAlamat);
 router.delete('/profil/alamat/:alamatId', auth, hapusAlamat);
 
+// Admin Routes for User Management
+router.get('/', auth, authorizeRoles('admin'), getAllUsers);
+router.post('/', auth, authorizeRoles('admin'), createUser);
+router.patch('/:id/role', auth, authorizeRoles('admin'), updateUserRole);
+router.delete('/:id', auth, authorizeRoles('admin'), deleteUser);
+
 module.exports = router;
