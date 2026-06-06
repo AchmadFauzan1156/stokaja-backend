@@ -31,7 +31,7 @@ const tambahBahanBaku = async (req, res, next) => {
 const lihatBahanBaku = async (req, res, next) => {
     try {
         const bahanBaku = await RawMaterial.find().sort({ namaBahan: 1 });
-        res.status(200).json(bahanBaku);
+        res.status(200).json({ data: bahanBaku });
     } catch (error) {
         next(error);
     }
