@@ -141,7 +141,8 @@ const forgotPassword = async (req, res, next) => {
         const user = await User.findOne({ email });
 
         if (!user) {
-            return res.status(404).json({ success: false, pesan: 'Email tidak ditemukan' });
+            // SECURITY PATCH: Jangan beri tahu apakah email ada atau tidak (cegah enumerasi)
+            return res.status(200).json({ success: true, pesan: 'Jika email terdaftar, instruksi reset password telah dikirim' });
         }
 
         // Generate token rahasia menggunakan crypto

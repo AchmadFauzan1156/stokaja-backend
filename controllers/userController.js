@@ -199,7 +199,7 @@ const hapusAlamat = async (req, res, next) => {
 // === ADMIN ENDPOINTS ===
 const getAllUsers = async (req, res, next) => {
     try {
-        const users = await User.find().select('-password -refreshToken').sort({ createdAt: -1 });
+        const users = await User.find().select('-password -refreshToken -resetPasswordToken -resetPasswordExpire').sort({ createdAt: -1 });
         res.status(200).json({ pesan: 'Berhasil memuat daftar pengguna', data: users });
     } catch (error) {
         next(error);

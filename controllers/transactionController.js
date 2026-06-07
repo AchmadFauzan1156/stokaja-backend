@@ -19,8 +19,22 @@ const checkoutKasir = async (req, res, next) => {
         let totalModalBarang = 0;
         let keranjangValid = [];
 
+        // SECURITY PATCH: Gabungkan produk yang duplikat dalam array keranjang
+        const groupedKeranjang = Object.values(isiKeranjang.reduce((acc, item) => {
+            const key = `${item.produkId}_${item.tipe || 'produk'}`;
+            if (!acc[key]) {
+                acc[key] = { ...item, jumlahBeli: Number(item.jumlahBeli) };
+            } else {
+                acc[key].jumlahBeli += Number(item.jumlahBeli);
+                if (item.catatan) {
+                    acc[key].catatan = acc[key].catatan ? `${acc[key].catatan}, ${item.catatan}` : item.catatan;
+                }
+            }
+            return acc;
+        }, {}));
+
         // POTONG STOK SECARA ATOMIK (LANGSUNG SAAT LOOPING)
-        for (let item of isiKeranjang) {
+        for (let item of groupedKeranjang) {
             const tipe = item.tipe || 'produk'; // Default: produk
             
             item.jumlahBeli = Number(item.jumlahBeli);
@@ -112,14 +126,19 @@ const checkoutKasir = async (req, res, next) => {
         const labaBersih = totalHargaBarang - totalModalBarang;
 
         // Validasi Logika Bisnis: Cegah pembayaran kurang dan minus
-        if (jumlahDibayar !== undefined && jumlahDibayar < totalBayarLengkap) {
+        let uangDiterima = jumlahDibayar;
+        if (req.user && req.user.role === 'pelanggan') {
+            uangDiterima = totalBayarLengkap; // Pelanggan selalu pas bayarnya via transfer/ewallet
+        }
+
+        if (uangDiterima !== undefined && uangDiterima < totalBayarLengkap) {
             await session.abortTransaction();
             session.endSession();
             return res.status(400).json({ pesan: `Uang tidak cukup! Total tagihan adalah Rp ${totalBayarLengkap}` });
         }
 
         // Hitung kembalian
-        const kembalianDihitung = jumlahDibayar > 0 ? jumlahDibayar - totalBayarLengkap : 0;
+        const kembalianDihitung = uangDiterima > 0 ? uangDiterima - totalBayarLengkap : 0;
 
         // SIMPAN TRANSAKSI
         const transaksiBaru = new Transaction({
@@ -150,7 +169,7 @@ const checkoutKasir = async (req, res, next) => {
                 totalBayar: totalBayarLengkap,
                 keuntunganBersih: labaBersih,
                 metodePembayaran: metodePembayaran,
-                jumlahDibayar: jumlahDibayar || totalBayarLengkap,
+                jumlahDibayar: uangDiterima,
                 kembalian: kembalianDihitung > 0 ? kembalianDihitung : 0
             },
             struk: transaksiBaru
@@ -440,7 +459,15 @@ const exportLaporanExcel = async (req, res, next) => {
             };
         }
 
-        const workbook = new ExcelJS.Workbook();
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename=Laporan_StokAja_${Date.now()}.xlsx`);
+
+        const options = {
+            stream: res,
+            useStyles: true,
+            useSharedStrings: true
+        };
+        const workbook = new ExcelJS.stream.xlsx.WorkbookWriter(options);
         const worksheet = workbook.addWorksheet('Laporan Penjualan');
 
         worksheet.columns = [
@@ -453,7 +480,8 @@ const exportLaporanExcel = async (req, res, next) => {
             { header: 'Status', key: 'status', width: 15 },
         ];
 
-        // Gunakan cursor agar RAM tidak overload (solusi Memory Leak)
+        worksheet.getRow(1).font = { bold: true };
+
         const cursor = Transaction.find(query).sort({ createdAt: -1 }).cursor();
         
         let index = 1;
@@ -466,16 +494,11 @@ const exportLaporanExcel = async (req, res, next) => {
                 total: doc.totalHarga,
                 untung: doc.marginKeuntungan || 0,
                 status: doc.statusPesanan
-            }).commit(); // flush baris ke memori atau stream
+            }).commit();
         }
 
-        worksheet.getRow(1).font = { bold: true };
-
-        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        res.setHeader('Content-Disposition', `attachment; filename=Laporan_StokAja_${Date.now()}.xlsx`);
-
-        await workbook.xlsx.write(res);
-        // Hapus res.status(200).end() karena xlsx.write(res) sudah mengelola stream response
+        await worksheet.commit();
+        await workbook.commit();
 
     } catch (error) {
         next(error);
@@ -572,15 +595,22 @@ const laporanPerProduk = async (req, res, next) => {
             { $sort: { totalPendapatan: -1 } }
         ]);
 
-        // Populate nama produk/bahan baku
-        const hasil = await Promise.all(dataPerProduk.map(async (item) => {
+        // Populate nama produk/bahan baku dengan satu query
+        const productIds = dataPerProduk.filter(d => d._id.tipeItem === 'Product').map(d => d._id.produkId);
+        const rawIds = dataPerProduk.filter(d => d._id.tipeItem === 'RawMaterial').map(d => d._id.produkId);
+
+        const products = await Product.find({ _id: { $in: productIds } }).select('nama');
+        const raws = await RawMaterial.find({ _id: { $in: rawIds } }).select('namaBahan');
+
+        const productMap = products.reduce((acc, p) => { acc[p._id.toString()] = p.nama; return acc; }, {});
+        const rawMap = raws.reduce((acc, r) => { acc[r._id.toString()] = r.namaBahan; return acc; }, {});
+
+        const hasil = dataPerProduk.map(item => {
             let nama = 'Item Dihapus';
-            if (item._id.tipeItem === 'Product') {
-                const p = await Product.findById(item._id.produkId).select('nama');
-                if (p) nama = p.nama;
-            } else {
-                const b = await RawMaterial.findById(item._id.produkId).select('namaBahan');
-                if (b) nama = b.namaBahan;
+            if (item._id.tipeItem === 'Product' && productMap[item._id.produkId.toString()]) {
+                nama = productMap[item._id.produkId.toString()];
+            } else if (item._id.tipeItem === 'RawMaterial' && rawMap[item._id.produkId.toString()]) {
+                nama = rawMap[item._id.produkId.toString()];
             }
             return {
                 produkId: item._id.produkId,
@@ -590,7 +620,7 @@ const laporanPerProduk = async (req, res, next) => {
                 totalPendapatan: item.totalPendapatan,
                 jumlahTransaksi: item.jumlahTransaksi
             };
-        }));
+        });
 
         res.status(200).json({
             pesan: 'Laporan per produk berhasil dibuat',

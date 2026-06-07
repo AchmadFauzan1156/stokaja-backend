@@ -63,11 +63,17 @@ const lihatProduk = async (req, res, next) => {
             filter.kategori = req.query.kategori;
         }
 
-        const semuaProduk = await Product.find(filter)
+        let query = Product.find(filter)
             .populate('kategori', 'nama')
             .skip(skip)
             .limit(limit)
             .sort({ createdAt: -1 });
+
+        if (req.user && req.user.role === 'pelanggan') {
+            query = query.select('-hargaModal');
+        }
+
+        const semuaProduk = await query;
 
         const totalData = await Product.countDocuments(filter);
 
@@ -86,7 +92,11 @@ const lihatProduk = async (req, res, next) => {
 // DETAIL 1 PRODUK BY ID
 const lihatDetailProduk = async (req, res, next) => {
     try {
-        const produk = await Product.findById(req.params.id).populate('kategori', 'nama');
+        let query = Product.findById(req.params.id).populate('kategori', 'nama');
+        if (req.user && req.user.role === 'pelanggan') {
+            query = query.select('-hargaModal');
+        }
+        const produk = await query;
         
         if (!produk) {
             return res.status(404).json({ pesan: 'Produk tidak ditemukan!' });

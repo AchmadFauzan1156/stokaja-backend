@@ -31,7 +31,11 @@ const tambahBahanBaku = async (req, res, next) => {
 // Read: Lihat semua bahan baku
 const lihatBahanBaku = async (req, res, next) => {
     try {
-        const bahanBaku = await RawMaterial.find().sort({ namaBahan: 1 });
+        let query = RawMaterial.find().sort({ namaBahan: 1 });
+        if (req.user && req.user.role === 'pelanggan') {
+            query = query.select('-hargaModal');
+        }
+        const bahanBaku = await query;
         res.status(200).json({ data: bahanBaku });
     } catch (error) {
         next(error);

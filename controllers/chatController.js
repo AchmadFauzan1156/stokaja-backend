@@ -57,34 +57,32 @@ const getChatHistory = async (req, res, next) => {
 // Daftar pelanggan yang pernah chat (untuk admin melihat list kontak)
 const getChatContacts = async (req, res, next) => {
     try {
-        // Ambil semua unique pengirim yang role-nya pelanggan
+        const page = parseInt(req.query.page) || 1;
+        const limit = Math.min(parseInt(req.query.limit) || 50, 100);
+        const skip = (page - 1) * limit;
+
+        // Kumpulkan semua ID yang pernah chat (secara efisien)
         const contacts = await Message.aggregate([
-            // Gabungkan pengirim dan penerima jadi satu list userId
-            {
-                $group: {
-                    _id: null,
-                    allUsers: {
-                        $addToSet: '$pengirim'
-                    },
-                    allReceivers: {
-                        $addToSet: '$penerima'
-                    }
-                }
-            },
             {
                 $project: {
-                    userIds: { $setUnion: ['$allUsers', '$allReceivers'] }
+                    kontakId: [ "$pengirim", "$penerima" ]
                 }
-            }
+            },
+            { $unwind: "$kontakId" },
+            { $group: { _id: "$kontakId" } },
+            { $skip: skip },
+            { $limit: limit }
         ]);
 
-        if (!contacts.length || !contacts[0].userIds) {
+        if (!contacts.length) {
             return res.status(200).json({ pesan: 'Belum ada kontak chat', data: [] });
         }
+        
+        const userIds = contacts.map(c => c._id);
 
         // Filter hanya user dengan role pelanggan
         const pelangganList = await User.find({
-            _id: { $in: contacts[0].userIds },
+            _id: { $in: userIds },
             role: 'pelanggan'
         }).select('namaLengkap email avatar');
 
