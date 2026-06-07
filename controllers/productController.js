@@ -16,12 +16,12 @@ const tambahProduk = async (req, res, next) => {
     try {
         const urlGambar = req.file ? req.file.path : null;
         
+        const { nama, deskripsi, harga, stok, stokMinimum, satuan, hargaModal, kategoriId, kategori } = req.body;
         const produkData = {
-            ...req.body,
-            kategori: req.body.kategoriId || req.body.kategori,
+            nama, deskripsi, harga, stok, stokMinimum, satuan, hargaModal,
+            kategori: kategoriId || kategori,
             gambar: urlGambar
         };
-        delete produkData.kategoriId;
         
         const produk = new Product(produkData);
         await produk.save();
@@ -57,6 +57,9 @@ const lihatProduk = async (req, res, next) => {
             filter.nama = { $regex: safeSearch, $options: 'i' };
         }
         if (req.query.kategori) {
+            if (typeof req.query.kategori !== 'string') {
+                return res.status(400).json({ pesan: 'Format kategori tidak valid.' });
+            }
             filter.kategori = req.query.kategori;
         }
 
@@ -107,11 +110,16 @@ const editProduk = async (req, res, next) => {
             return res.status(404).json({ pesan: 'Produk tidak ditemukan!' });
         }
 
-        let dataBaru = { ...req.body };
-        if (dataBaru.kategoriId) {
-            dataBaru.kategori = dataBaru.kategoriId;
-            delete dataBaru.kategoriId;
-        }
+        const { nama, deskripsi, harga, stok, stokMinimum, satuan, hargaModal, kategoriId, kategori } = req.body;
+        let dataBaru = {};
+        if (nama) dataBaru.nama = nama;
+        if (deskripsi !== undefined) dataBaru.deskripsi = deskripsi;
+        if (harga !== undefined) dataBaru.harga = harga;
+        if (hargaModal !== undefined) dataBaru.hargaModal = hargaModal;
+        if (stok !== undefined) dataBaru.stok = stok;
+        if (stokMinimum !== undefined) dataBaru.stokMinimum = stokMinimum;
+        if (satuan) dataBaru.satuan = satuan;
+        if (kategoriId || kategori) dataBaru.kategori = kategoriId || kategori;
 
         if (req.file) {
             if (produkLama.gambar) {

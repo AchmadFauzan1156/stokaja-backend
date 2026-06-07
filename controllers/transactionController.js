@@ -23,8 +23,9 @@ const checkoutKasir = async (req, res, next) => {
         for (let item of isiKeranjang) {
             const tipe = item.tipe || 'produk'; // Default: produk
             
-            if (item.jumlahBeli <= 0) {
-                throw new Error('Gagal: Kuantitas pembelian harus lebih besar dari 0.');
+            item.jumlahBeli = Number(item.jumlahBeli);
+            if (isNaN(item.jumlahBeli) || item.jumlahBeli <= 0) {
+                throw new Error('Gagal: Kuantitas pembelian tidak valid (harus angka > 0).');
             }
 
             if (tipe === 'bahanBaku') {
@@ -181,6 +182,9 @@ const lihatPesananSaya = async (req, res, next) => {
 
         // Filter by status
         if (req.query.status) {
+            if (typeof req.query.status !== 'string') {
+                return res.status(400).json({ pesan: 'Format status tidak valid.' });
+            }
             filter.statusPesanan = req.query.status;
         }
 
@@ -348,6 +352,9 @@ const lihatDaftarPesanan = async (req, res, next) => {
         let aturanPencarian = {};
         
         if (status) {
+            if (typeof status !== 'string') {
+                return res.status(400).json({ pesan: 'Format status tidak valid.' });
+            }
             aturanPencarian.statusPesanan = status;
         }
 
