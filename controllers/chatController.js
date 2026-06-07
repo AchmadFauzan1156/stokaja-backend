@@ -57,8 +57,8 @@ const getChatHistory = async (req, res, next) => {
 // Daftar pelanggan yang pernah chat (untuk admin melihat list kontak)
 const getChatContacts = async (req, res, next) => {
     try {
-        const page = parseInt(req.query.page) || 1;
-        const limit = Math.min(parseInt(req.query.limit) || 50, 100);
+        const page = Math.max(1, parseInt(req.query.page) || 1);
+        const limit = Math.max(1, Math.min(parseInt(req.query.limit) || 50, 100));
         const skip = (page - 1) * limit;
 
         // Kumpulkan semua ID yang pernah chat (secara efisien)

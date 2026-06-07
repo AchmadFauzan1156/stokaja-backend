@@ -51,11 +51,17 @@ const initSocket = (server) => {
                     return socket.emit("pesan_error", { message: "Pesan terlalu panjang (maksimal 1000 karakter)." });
                 }
 
+                // SECURITY: Jika pengirim adalah pelanggan, mereka HANYA boleh mengirim pesan ke grup admin
+                let penerima = data.penerima;
+                if (socket.user.role === 'pelanggan') {
+                    penerima = null;
+                }
+
                 // data format: { penerima: "id_admin" (bisa null), pesan: "Isi teks" }
                 const Message = require('../models/Message');
                 const pesanBaru = new Message({
                     pengirim: socket.user.id,
-                    penerima: data.penerima || null,
+                    penerima: penerima,
                     isiPesan: data.pesan
                 });
                 await pesanBaru.save();
@@ -64,7 +70,7 @@ const initSocket = (server) => {
                 const payload = {
                     _id: pesanBaru._id,
                     pengirim: socket.user.id,
-                    penerima: data.penerima,
+                    penerima: penerima,
                     isiPesan: data.pesan,
                     createdAt: pesanBaru.createdAt
                 };
@@ -73,8 +79,8 @@ const initSocket = (server) => {
                 socket.emit("receive_message", payload);
 
                 // Kirim ke penerima jika ada ID-nya (dan penerima sedang online)
-                if (data.penerima) {
-                    io.to(data.penerima).emit("receive_message", payload);
+                if (penerima) {
+                    io.to(penerima).emit("receive_message", payload);
                 } else {
                     // Jika penerima null (Admin secara general), kirim ke semua admin
                     io.to("admin_room").emit("receive_message", payload);

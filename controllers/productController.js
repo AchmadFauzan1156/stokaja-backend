@@ -37,9 +37,9 @@ const tambahProduk = async (req, res, next) => {
 
 const lihatProduk = async (req, res, next) => {
     try {
-        const page = parseInt(req.query.page) || 1;
+        const page = Math.max(1, parseInt(req.query.page) || 1);
         // SECURITY PATCH: Cegah Memory Overload, limit maksimal 100
-        const limit = Math.min(parseInt(req.query.limit) || 10, 500);
+        const limit = Math.max(1, Math.min(parseInt(req.query.limit) || 20, 100));
         const skip = (page - 1) * limit;
 
         // Filter berdasarkan search dan kategori

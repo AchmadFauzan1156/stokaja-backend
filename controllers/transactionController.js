@@ -126,15 +126,15 @@ const checkoutKasir = async (req, res, next) => {
         const labaBersih = totalHargaBarang - totalModalBarang;
 
         // Validasi Logika Bisnis: Cegah pembayaran kurang dan minus
-        let uangDiterima = jumlahDibayar;
+        let uangDiterima = Number(jumlahDibayar);
         if (req.user && req.user.role === 'pelanggan') {
             uangDiterima = totalBayarLengkap; // Pelanggan selalu pas bayarnya via transfer/ewallet
         }
 
-        if (uangDiterima !== undefined && uangDiterima < totalBayarLengkap) {
+        if (isNaN(uangDiterima) || uangDiterima < totalBayarLengkap) {
             await session.abortTransaction();
             session.endSession();
-            return res.status(400).json({ pesan: `Uang tidak cukup! Total tagihan adalah Rp ${totalBayarLengkap}` });
+            return res.status(400).json({ pesan: `Jumlah pembayaran tidak valid atau uang tidak cukup! Total tagihan adalah Rp ${totalBayarLengkap}` });
         }
 
         // Hitung kembalian
@@ -192,9 +192,9 @@ const checkoutKasir = async (req, res, next) => {
 
 const lihatPesananSaya = async (req, res, next) => {
     try {
-        const page = parseInt(req.query.page) || 1;
+        const page = Math.max(1, parseInt(req.query.page) || 1);
         // SECURITY PATCH: Cegah Memory Overload, limit maksimal 100
-        const limit = Math.min(parseInt(req.query.limit) || 20, 100);
+        const limit = Math.max(1, Math.min(parseInt(req.query.limit) || 20, 100));
         const skip = (page - 1) * limit;
 
         let filter = { pelangganId: req.user.id };
@@ -366,9 +366,9 @@ const lihatDetailPesanan = async (req, res, next) => {
 
 const lihatDaftarPesanan = async (req, res, next) => {
     try {
-        const page = parseInt(req.query.page) || 1;
+        const page = Math.max(1, parseInt(req.query.page) || 1);
         // SECURITY PATCH: Cegah Memory Overload, limit maksimal 100
-        const limit = Math.min(parseInt(req.query.limit) || 20, 100);
+        const limit = Math.max(1, Math.min(parseInt(req.query.limit) || 20, 100));
         const skip = (page - 1) * limit;
 
         const { status, search, startDate, endDate } = req.query;

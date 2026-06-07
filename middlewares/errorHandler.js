@@ -33,11 +33,17 @@ const errorHandler = (err, req, res, _next) => {
     });
   }
 
-  // Mongoose: ID tidak valid
+  // Mongoose: CastError (tipe data atau ObjectId tidak valid)
   if (err.name === "CastError") {
+    if (err.kind === "ObjectId") {
+      return res.status(400).json({
+        success: false,
+        message: "ID tidak valid",
+      });
+    }
     return res.status(400).json({
       success: false,
-      message: "ID tidak valid",
+      message: `Format data tidak valid pada field: ${err.path}`,
     });
   }
 
