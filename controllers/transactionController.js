@@ -14,6 +14,12 @@ const checkoutKasir = async (req, res, next) => {
     try {
         const { isiKeranjang, lokasiPengiriman, metodePembayaran = 'tunai', jumlahDibayar = 0 } = req.body;
         const persentasePajak = 0; // SECURITY PATCH: Hardcode 0% untuk mencegah eksploitasi dari frontend
+
+        if (!isiKeranjang || !Array.isArray(isiKeranjang) || isiKeranjang.length === 0) {
+            await session.abortTransaction();
+            session.endSession();
+            return res.status(400).json({ pesan: 'Keranjang belanja tidak boleh kosong!' });
+        }
         
         let totalHargaBarang = 0;
         let totalModalBarang = 0;
@@ -281,6 +287,11 @@ const ubahStatusPesanan = async (req, res, next) => {
         // SECURITY PATCH: Cegah Un-cancel yang bisa mengeksploitasi stok
         if (transaksiLama.statusPesanan === 'batal' && statusBaru !== 'batal') {
             return res.status(400).json({ message: 'Pesanan yang sudah dibatalkan tidak dapat diaktifkan kembali' });
+        }
+
+        // SECURITY PATCH: Cegah pengubahan status pesanan yang sudah selesai
+        if (transaksiLama.statusPesanan === 'selesai' && statusBaru !== 'selesai') {
+            return res.status(400).json({ message: 'Pesanan yang sudah selesai tidak dapat diubah statusnya' });
         }
 
         if (statusBaru === 'batal' && transaksiLama.statusPesanan !== 'batal') {
