@@ -297,11 +297,15 @@ const ubahStatusPesanan = async (req, res, next) => {
             }
         } else {
             // Pembaruan normal jika bukan pembatalan
-            transaksiDiperbarui = await Transaction.findByIdAndUpdate(
-                transaksiId,
+            transaksiDiperbarui = await Transaction.findOneAndUpdate(
+                { _id: transaksiId, statusPesanan: { $ne: 'batal' } },
                 { statusPesanan: statusBaru },
                 { returnDocument: 'after', runValidators: true }
             );
+
+            if (!transaksiDiperbarui) {
+                return res.status(400).json({ message: 'Pesanan sudah dibatalkan sebelumnya atau tidak ditemukan' });
+            }
         }
 
         res.status(200).json({

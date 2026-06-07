@@ -39,7 +39,7 @@ const lihatProduk = async (req, res, next) => {
     try {
         const page = parseInt(req.query.page) || 1;
         // SECURITY PATCH: Cegah Memory Overload, limit maksimal 100
-        const limit = Math.min(parseInt(req.query.limit) || 10, 100);
+        const limit = Math.min(parseInt(req.query.limit) || 10, 500);
         const skip = (page - 1) * limit;
 
         // Filter berdasarkan search dan kategori
@@ -162,7 +162,11 @@ const hapusProduk = async (req, res, next) => {
         if (produk.gambar) {
             const publicId = getPublicId(produk.gambar);
             if (publicId) {
-                await cloudinary.uploader.destroy(publicId);
+                try {
+                    await cloudinary.uploader.destroy(publicId);
+                } catch (err) {
+                    console.error('Gagal menghapus gambar di Cloudinary:', err.message);
+                }
             }
         }
 

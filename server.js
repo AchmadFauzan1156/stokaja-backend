@@ -72,7 +72,7 @@ const userRoutes = require('./routes/userRoutes');
 const rawMaterialRoutes = require('./routes/rawMaterialRoutes');
 const categoryRoutes = require('./routes/categoryRoutes');
 const paymentMethodRoutes = require('./routes/paymentMethodRoutes');
-const adminRoutes = require('./routes/adminRoutes');
+
 const chatRoutes = require('./routes/chatRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 
@@ -85,7 +85,7 @@ app.use(`${API_VERSION}/users`, userRoutes);
 app.use(API_VERSION, rawMaterialRoutes);
 app.use(API_VERSION, categoryRoutes);
 app.use(API_VERSION, paymentMethodRoutes);
-app.use(API_VERSION, adminRoutes);
+
 app.use(API_VERSION, chatRoutes);
 app.use(API_VERSION, dashboardRoutes);
 
