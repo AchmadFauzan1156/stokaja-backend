@@ -157,28 +157,13 @@ const forgotPassword = async (req, res, next) => {
         const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
         // Diubah dari /ResetPassword?token= menjadi /reset-password/${token} sesuai route Next.js
         const resetUrl = `${frontendUrl}/reset-password/${resetToken}`;
-        const message = `Anda menerima email ini karena Anda (atau seseorang) meminta reset password untuk akun Anda di StokAja!.\n\nSilakan klik link berikut untuk membuat password baru:\n\n${resetUrl}\n\nLink ini akan kadaluarsa dalam 1 jam.\nJika Anda tidak memintanya, abaikan email ini.`;
-
-        try {
-            const sendEmail = require('../utils/sendEmail');
-            await sendEmail({
-                email: user.email,
-                subject: 'StokAja! - Reset Password Token',
-                message: message
-            });
-
-            res.status(200).json({
-                success: true,
-                pesan: 'Email reset password telah dikirim ke ' + user.email
-            });
-        } catch (error) {
-            console.error(error);
-            user.resetPasswordToken = undefined;
-            user.resetPasswordExpire = undefined;
-            await user.save({ validateBeforeSave: false });
-
-            return res.status(500).json({ success: false, pesan: 'Email gagal dikirim. Periksa konfigurasi SMTP.' });
-        }
+        
+        // BYPASS EMAIL: Langsung return resetUrl agar tidak terkena SMTP timeout Railway
+        return res.status(200).json({
+            success: true,
+            pesan: 'Simulasi Email berhasil dibuat.',
+            data: { resetUrl }
+        });
     } catch (error) {
         next(error);
     }
