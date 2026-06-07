@@ -155,7 +155,8 @@ const forgotPassword = async (req, res, next) => {
 
         // URL Reset
         const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-        const resetUrl = `${frontendUrl}/ResetPassword?token=${resetToken}`;
+        // Diubah dari /ResetPassword?token= menjadi /reset-password/${token} sesuai route Next.js
+        const resetUrl = `${frontendUrl}/reset-password/${resetToken}`;
         const message = `Anda menerima email ini karena Anda (atau seseorang) meminta reset password untuk akun Anda di StokAja!.\n\nSilakan klik link berikut untuk membuat password baru:\n\n${resetUrl}\n\nLink ini akan kadaluarsa dalam 1 jam.\nJika Anda tidak memintanya, abaikan email ini.`;
 
         try {
